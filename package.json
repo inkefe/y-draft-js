@@ -1,6 +1,6 @@
 {
-  "name": "react",
-  "version": "0.0.0",
+  "name": "y-draft-js",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
     "@babel/plugin-transform-react-jsx": "^7.16.0",
