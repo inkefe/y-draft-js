@@ -1,7 +1,8 @@
 {
   "name": "y-draft-js",
   "version": "1.0.0",
-  "private": true,
+  "description": "Draft-js editor bindings for Yjs",
+  "private": false,
   "dependencies": {
     "@babel/plugin-transform-react-jsx": "^7.16.0",
     "@popperjs/core": "^2.0.0",
