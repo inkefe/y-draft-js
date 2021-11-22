@@ -12,57 +12,108 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {convertFromRaw} from 'draft-js';
+import { convertFromRaw, SelectionState } from 'draft-js';
+import { createEditorStateWithText } from '@draft-js-plugins/editor';
 
-var rawContent = {
+export const rawContent = {
   blocks: [
     {
       text: 'This is a Draft-based editor that supports TeX rendering.',
       type: 'unstyled',
+      key: '9gm3s',
+      depth: 0,
+      inlineStyleRanges: [],
+      entityRanges: [],
+      data: {}
     },
     {
       text: '',
+      key: '3s41d',
       type: 'unstyled',
+      depth: 0,
+      inlineStyleRanges: [],
+      entityRanges: [],
+      data: {}
     },
     {
       text: (
         'Each TeX block below is represented as a DraftEntity object and ' +
         'rendered using Khan Academy\'s KaTeX library.'
       ),
+      key: 'dda23',
       type: 'unstyled',
+      depth: 0,
+      inlineStyleRanges: [],
+      entityRanges: [],
+      data: {}
     },
     {
       text: '',
+      key: 'ee23x',
       type: 'unstyled',
+      depth: 0,
+      inlineStyleRanges: [],
+      entityRanges: [],
+      data: {}
     },
     {
       text: 'Click any TeX block to edit.',
       type: 'unstyled',
+      key: '23dfs',
+      depth: 0,
+      inlineStyleRanges: [],
+      entityRanges: [],
+      data: {}
     },
-    {
-      text: ' ',
-      type: 'atomic',
-      entityRanges: [{offset: 0, length: 1, key: 'first'}],
-    },
+    // {
+    //   text: ' ',
+    //   type: 'atomic',
+    //   entityRanges: [{offset: 0, length: 1, key: 'first'}],
+    // },
     {
       text: 'You can also insert a new TeX block at the cursor location.',
       type: 'unstyled',
+      key: 'io3kj',
+      depth: 0,
+      inlineStyleRanges: [],
+      entityRanges: [],
+      data: {}
     },
   ],
 
   entityMap: {
-    first: {
-      type: 'TOKEN',
-      mutability: 'IMMUTABLE',
-      data: {
-        content: (
-          '\\left( \\sum_{k=1}^n a_k b_k \\right)^{\\!\\!2} \\leq\n' +
-          '\\left( \\sum_{k=1}^n a_k^2 \\right)\n' +
-          '\\left( \\sum_{k=1}^n b_k^2 \\right)'
-        ),
-      },
-    },
+    // first: {
+    //   type: 'TOKEN',
+    //   mutability: 'IMMUTABLE',
+    //   data: {
+    //     content: (
+    //       '\\left( \\sum_{k=1}^n a_k b_k \\right)^{\\!\\!2} \\leq\n' +
+    //       '\\left( \\sum_{k=1}^n a_k^2 \\right)\n' +
+    //       '\\left( \\sum_{k=1}^n b_k^2 \\right)'
+    //     ),
+    //   },
+    // },
   },
 };
-
-export var content = convertFromRaw(rawContent);
+// text转RAW, key为xxxx，没有@
+export const stringToRaw = (str) => {
+  const contentRaw = convertToRaw(createEditorStateWithText(str || '').getCurrentContent())
+  return contentRaw;
+}
+// 对方法进行封装，防止内部报错
+export const tryCatchFunc = (fn, msg) =>
+  function(...args) {
+    try {
+      return typeof fn === 'function' && fn.apply(this, args)
+    } catch (error) {
+      console.warn(msg || '方法报错', error)
+    }
+  }
+export const transToObj = raw => typeof raw === 'string' && raw.match(/^({|\[)/) ? tryCatchFunc(raw => {
+  return JSON.parse(raw)
+})(raw) || raw : raw
+// RAW转text
+export const rawToText = raw => {
+  raw = transToObj(raw)
+  return raw?.blocks ? raw?.blocks.reduce((a, b, index) => ({ text: `${a.text}${index > 0 ? '\n' : ''}${b.text}` }), { text: '' }).text : ''
+}

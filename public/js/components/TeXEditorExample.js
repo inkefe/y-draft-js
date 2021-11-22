@@ -19,19 +19,17 @@ import {Map} from 'immutable';
 import React from 'react';
 
 import TeXBlock from './TeXBlock';
-import {content} from '../data/content';
 import {insertTeXBlock} from '../modifiers/insertTeXBlock';
 import {removeTeXBlock} from '../modifiers/removeTeXBlock';
-
 var {Editor, EditorState, RichUtils, convertToRaw, convertFromRaw} = Draft;
 window.convertToRaw = convertToRaw
 window.convertFromRaw = convertFromRaw
 window.EditorState =EditorState
-export default class TeXEditorExample extends React.Component {
+class TeXEditorExample extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      editorState: EditorState.createWithContent(content),
+      editorState: EditorState.createWithContent(convertFromRaw(props.defaultValue)),
       liveTeXEdits: Map(),
     };
 
@@ -59,10 +57,11 @@ export default class TeXEditorExample extends React.Component {
       return null;
     };
 
-    this._focus = () => this.refs.editor.focus();
+    this._focus = () => this.editorRef.focus();
     this._onChange = (editorState) => {
       this.setState({editorState})
-      console.log('KatexOutput -', convertToRaw(editorState.getCurrentContent()));
+      const { onChange } = this.props
+      onChange && onChange(editorState)
     };
 
     this._handleKeyCommand = (command, editorState) => {
@@ -90,6 +89,10 @@ export default class TeXEditorExample extends React.Component {
     };
   }
 
+  componentDidMount (){
+    this.props.onRef && (this.props.onRef.current = this.editorRef)
+    this.editorRef.setStateByRaw = this.setStateByRaw
+  }
   /**
    * While editing TeX, set the Draft editor to read-only. This allows us to
    * have a textarea within the DOM.
@@ -106,8 +109,7 @@ export default class TeXEditorExample extends React.Component {
               onChange={this._onChange}
               placeholder="Start a document..."
               readOnly={this.state.liveTeXEdits.count()}
-              ref="editor"
-              spellCheck={true}
+              ref={(ref) => (this.editorRef = ref)}
             />
           </div>
         </div>
@@ -118,3 +120,5 @@ export default class TeXEditorExample extends React.Component {
     );
   }
 }
+export default React.forwardRef((props, ref) => <TeXEditorExample {...props} onRef={ref}/>)
+// export default TeXEditorExample

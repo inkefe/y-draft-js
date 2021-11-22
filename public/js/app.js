@@ -14,10 +14,12 @@
 
 'use strict';
 
-import TeXEditorExample from './components/TeXEditorExample';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import Editor from './Editor';
+
+
 ReactDOM.render(
-  <TeXEditorExample />,
+  <Editor/>,
   document.getElementById('target'),
 );
