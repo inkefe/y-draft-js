@@ -109,3 +109,43 @@ export const tryCatchFunc = (fn, msg) =>
       console.warn(msg || '方法报错', error)
     }
   }
+
+export const mentions = [
+  {
+    name: 'Matthew Russell',
+    id: '122',
+    link: 'https://twitter.com/mrussell247',
+    avatar:
+      'https://pbs.twimg.com/profile_images/517863945/mattsailing_400x400.jpg',
+  },
+  {
+    name: 'Julian Krispel-Samsel',
+    id: '43',
+    link: 'https://twitter.com/juliandoesstuff',
+    avatar: 'https://avatars2.githubusercontent.com/u/1188186?v=3&s=400',
+  },
+  {
+    name: 'Jyoti Puri',
+    id: '433',
+    link: 'https://twitter.com/jyopur',
+    avatar: 'https://avatars0.githubusercontent.com/u/2182307?v=3&s=400',
+  },
+  {
+    name: 'Max Stoiber',
+    id: '233',
+    link: 'https://twitter.com/mxstbr',
+    avatar: 'https://avatars0.githubusercontent.com/u/7525670?s=200&v=4',
+  },
+  {
+    name: 'Nik Graf',
+    link: 'https://twitter.com/nikgraf',
+    avatar: 'https://avatars0.githubusercontent.com/u/223045?v=3&s=400',
+  },
+  {
+    name: 'Pascal Brandt',
+    id: '123',
+    link: 'https://twitter.com/psbrandt',
+    avatar:
+      'https://pbs.twimg.com/profile_images/688487813025640448/E6O6I011_400x400.png',
+  },
+];

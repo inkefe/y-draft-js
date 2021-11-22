@@ -29,7 +29,7 @@ const getKeyByEntityData = (entityData) => {
     // case 'TABLE':
     //   return `OKR-${data.key}`
     case 'mention':
-      return `mention-${data.key}`
+      return `mention-${data.key || data.mention.name}`
     // case 'IMAGE':
     //   return `IMG`
     // case 'VIDEO':
@@ -52,10 +52,10 @@ const entityArray2Map = (arr) => {
         ...item,
         key: {
           ...entityData,
-          data: `${data.mention.id}-${data.key}`
+          data: `${data.mention.id}-${data.key || data.mention.name}`
         }
       }
-      entity[`${data.mention.id}-${data.key}`] = data
+      entity[`${data.mention.id}-${data.key || data.mention.name}`] = data
       entityRange[key] = 1
       return
     }
@@ -93,6 +93,7 @@ const entityRange2Array = (entityRanges = [], entityPool, enityRangeMap) => {
   for (const index in entityRanges) {
     let target = null
     const enityRange = enityRangeMap[index]
+    if(!enityRange?.key) continue
     const { type, data } = enityRange.key
     if (type === 'mention') {
       // enityRange.data = entityPool[data]

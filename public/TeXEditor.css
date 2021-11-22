@@ -11,9 +11,30 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+@import '@draft-js-plugins/mention/lib/plugin.css';
+@import '@draft-js-plugins/inline-toolbar/lib/plugin.css';
 
+.headlineButtonWrapper {
+  display: inline-block;
+}
+
+.headlineButton {
+  background: #fbfbfb;
+  color: #888;
+  font-size: 18px;
+  border: 0;
+  padding-top: 5px;
+  vertical-align: bottom;
+  height: 34px;
+  width: 36px;
+}
+
+.headlineButton:hover,
+.headlineButton:focus {
+  background: #f3f3f3;
+}
 .TeXEditor-root {
-  font-family: 'Century Schoolbook', serif;
+  /* font-family: 'Century Schoolbook', serif; */
   -webkit-font-smoothing: antialiased;
   margin: 40px auto;
   width: 900px;

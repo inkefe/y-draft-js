@@ -290,7 +290,7 @@ export const changeYmapByDelta = (delta, ymap) => {
   const operations = getDeltaArray(delta, [], ymap)
   if(operations.length === 0) return 
   const ydoc = ymap.doc
-  // console.log(operations, delta);
+  console.log(operations, delta);
   ydoc.transact(() => {
     operations.forEach(opr => {
       applyYDocOp(opr, ymap)

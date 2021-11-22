@@ -17,21 +17,50 @@
 import Draft from 'draft-js';
 import {Map} from 'immutable';
 import React from 'react';
-
+import Editor from '@draft-js-plugins/editor';
+import createMentionPlugin, {
+  defaultSuggestionsFilter,
+} from '@draft-js-plugins/mention';
+import createInlineToolbarPlugin, {
+  Separator,
+} from '@draft-js-plugins/inline-toolbar';
+import HeadlinesButton from './HeadlinesButton';
+import {
+  ItalicButton,
+  BoldButton,
+  UnderlineButton,
+  CodeButton,
+  UnorderedListButton,
+  OrderedListButton,
+  BlockquoteButton,
+  CodeBlockButton,
+} from '@draft-js-plugins/buttons';
 import TeXBlock from './TeXBlock';
 import {insertTeXBlock} from '../modifiers/insertTeXBlock';
 import {removeTeXBlock} from '../modifiers/removeTeXBlock';
-var {Editor, EditorState, RichUtils, convertToRaw, convertFromRaw} = Draft;
-window.convertToRaw = convertToRaw
-window.convertFromRaw = convertFromRaw
-window.EditorState =EditorState
+import { mentions } from '../data/content';
+var { EditorState, RichUtils, convertToRaw, convertFromRaw} = Draft;
+
+
+const inlineToolbarPlugin = createInlineToolbarPlugin();
+const { InlineToolbar } = inlineToolbarPlugin;
 class TeXEditorExample extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       editorState: EditorState.createWithContent(convertFromRaw(props.defaultValue)),
       liveTeXEdits: Map(),
+      open: false,
+      suggestions: mentions
     };
+
+    const mentionPlugin = createMentionPlugin();
+    // eslint-disable-next-line no-shadow
+    const { MentionSuggestions } = mentionPlugin;
+    // eslint-disable-next-line no-shadow
+    const plugins = [ mentionPlugin, inlineToolbarPlugin];
+    this.plugins = plugins;
+    this.MentionSuggestions = MentionSuggestions;
 
     this._blockRenderer = (block) => {
       if (block.getType() === 'atomic') {
@@ -82,14 +111,15 @@ class TeXEditorExample extends React.Component {
     };
 
     this._insertTeX = () => {
-      this.setState({
-        liveTeXEdits: Map(),
-        editorState: insertTeXBlock(this.state.editorState),
-      });
+      console.log(convertToRaw(this.state.editorState.getCurrentContent()));
+      // this.setState({
+      //   liveTeXEdits: Map(),
+      //   editorState: insertTeXBlock(this.state.editorState),
+      // });
     };
   }
 
-  componentDidMount (){
+  componentDidMount () {
     this.props.onRef && (this.props.onRef.current = this.editorRef)
     this.editorRef.setStateByRaw = this.setStateByRaw
   }
@@ -104,28 +134,68 @@ class TeXEditorExample extends React.Component {
       }, 0)
     }
   }
+
+  onOpenChange = (open) => this.setState({open});
+
+  onSearchChange = (value) => {
+    if(!value.value) return this.onOpenChange(false)
+    this.setState({
+      suggestions: defaultSuggestionsFilter(value, mentions),
+    })
+  }
   /**
    * While editing TeX, set the Draft editor to read-only. This allows us to
    * have a textarea within the DOM.
    */
   render() {
+    const { MentionSuggestions, plugins } = this
+    const { editorState, liveTeXEdits, open, suggestions } = this.state;
     return (
       <div className="TexEditor-container">
         <div className="TeXEditor-root">
           <div className="TeXEditor-editor" onClick={this._focus}>
             <Editor
               blockRendererFn={this._blockRenderer}
-              editorState={this.state.editorState}
+              editorState={editorState}
               handleKeyCommand={this._handleKeyCommand}
               onChange={this._onChange}
               placeholder="Start a document..."
-              readOnly={this.state.liveTeXEdits.count()}
+              plugins={plugins}
+              readOnly={liveTeXEdits.count()}
               ref={(ref) => (this.editorRef = ref)}
             />
           </div>
+          <MentionSuggestions
+              open={open}
+              onOpenChange={this.onOpenChange}
+              suggestions={suggestions}
+              onSearchChange={this.onSearchChange}
+              onAddMention={() => {
+                // get the mention object selected
+              }}
+            />
+           <InlineToolbar>
+            {
+              // may be use React.Fragment instead of div to improve perfomance after React 16
+              (externalProps) => (
+                <div>
+                  <BoldButton {...externalProps} />
+                  <ItalicButton {...externalProps} />
+                  <UnderlineButton {...externalProps} />
+                  <CodeButton {...externalProps} />
+                  <Separator {...externalProps} />
+                  <HeadlinesButton {...externalProps} />
+                  <UnorderedListButton {...externalProps} />
+                  <OrderedListButton {...externalProps} />
+                  <BlockquoteButton {...externalProps} />
+                  <CodeBlockButton {...externalProps} />
+                </div>
+              )
+            }
+          </InlineToolbar>
         </div>
         <button onClick={this._insertTeX} className="TeXEditor-insert">
-          {'Insert new TeX'}
+          {'console raw'}
         </button>
       </div>
     );

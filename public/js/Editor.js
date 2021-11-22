@@ -4,7 +4,7 @@ import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 // import { IndexeddbPersistence } from 'y-indexeddb'
 // @ts-ignore
-import { DraftBinding, getRawSharedByData } from 'y-draft-js'
+import { DraftBinding, getRawSharedByData, toRawSharedData } from 'y-draft-js'
 import { rawContent } from './data/content';
 import TeXEditorExample from './components/TeXEditorExample';
 
@@ -42,12 +42,15 @@ export default function Editor () {
     // });
     provider.on("sync", (isSynced) => {
       console.log('sync', isSynced);
-      if (isSynced && ymap.get(contenField)) {
+      if (!isSynced) return
+      console.log(ymap.get(contenField));
+      if(ymap.get(contenField)) {
         const raw = getRawSharedByData(ymap, contenField)
         // console.log(ymap.get(contenField).toJSON());
         console.log(raw);
         setValue(raw);
-        // ymap.set(contenField, toRawSharedData(value, ymap))
+      } else {
+        ymap.set(contenField, toRawSharedData(value, ymap))
       }
     });
 

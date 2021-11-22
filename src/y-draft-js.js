@@ -15,6 +15,7 @@ export { toRawSharedData, getRawSharedByData }
 export class DraftBinding {
   constructor(ymap, key = 'raw', editor, provider) {
     this.editor = editor
+    this.doc = ymap.doc
     this.ymap = ymap
     this.awareness = provider.awareness
     this.mux = createMutex()
@@ -76,10 +77,15 @@ export class DraftBinding {
     // })
     // this.awareness.on('change', this.rerenderDecorations)
     const _update = this.editor.update // listen to changes
-    this.editor.update = (...args) => {
+    _update && (this.editor.update = (...args) => {
       this.onChange.apply(this, args)
       _update.apply(this.editor, args)
-    }
+    })
+    const _onChange = this.editor.onChange
+    _onChange && (this.editor.onChange = (...args) => {
+      this.onChange.apply(this, args)
+      _onChange.apply(this.editor, args)
+    })
   }
 
   _onSelect = e => {
@@ -119,8 +125,10 @@ export class DraftBinding {
     const editorState = this.getEditorState()
     const selectionState = editorState.getSelection();
     const newEditorState = EditorState.push(editorState, convertFromRaw(raw), 'sycn-change')
-    // console.log(selectionState.getHasFocus());
-    if (!selectionState.getHasFocus()) return _onChange(newEditorState, true);
+    // if (!selectionState.getHasFocus()) {
+    //   console.log('notFocus');
+    //   return _onChange(newEditorState, true);
+    // }
     const contentState = editorState.getCurrentContent();
     const startKey = selectionState.getStartKey();
     const endKey = selectionState.getEndKey();
