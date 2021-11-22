@@ -8,8 +8,10 @@ import { transRaw, getNewSelection, changeYmapByDelta, toRawSharedData, toSyncEl
 import { diffRaw, rbw2raw } from './diff'
 
 const LOCAL_OPERATIONS = new WeakMap();
-
-export { toRawSharedData }
+const getRawSharedByData = (ymap, contenField) => {    
+  return rbw2raw(ymap.get(contenField).toJSON())
+}
+export { toRawSharedData, getRawSharedByData }
 export class DraftBinding {
   constructor(ymap, key = 'raw', editor, provider) {
     this.editor = editor
@@ -22,15 +24,21 @@ export class DraftBinding {
     //   editor._onSelect(e)
     //   this._onSelect(e)
     // }
-    if(!ymap.get(key)) return new Error(`not find ${key} in ymap`)
-    this.value = rbw2raw(ymap.get(key)?.toJSON())
+    // this.value = rbw2raw(ymap.get(key)?.toJSON())
     console.log(this.value, key);
     // ymap.doc.on('afterTransaction', update => {
     //   console.log(update, 'afterTransaction');
     // })
-    ymap.get(key).observeDeep(event => this.mux(() => {
-      console.log(event);
+    ymap.observeDeep(event => this.mux(() => {
+      let currentTarget = null
       event.forEach(item => {
+        // console.log(item, 'observeDeep');
+        const { path } = item
+        if(path[0] === this.rawKey) {
+          currentTarget = item.currentTarget
+          // 
+          // hasChange = true
+        }
         item.changes.keys.forEach((change, key) => {
           // if (change.action === 'add') {
           //   console.log(`Property "${key}" was added. Initial value: `, ymap.get(key))
@@ -41,10 +49,10 @@ export class DraftBinding {
           // }
           // const rbw = ymap.get(key).toJSON()
           // const raw = rbw2raw(rbw)
-          console.log(item, 'observeDeep');
-          // this.setStateByRaw(rbw2raw(rbw))
+          // console.log(item, 'observeDeep');
         })
       })
+      currentTarget && this.setStateByRaw(getRawSharedByData(currentTarget, this.rawKey))
       // console.log('delta:', event)
     }))
     // editor.onDidChangeCursorSelection(() => {
@@ -66,7 +74,7 @@ export class DraftBinding {
     //     })
     //   }
     // })
-    this.awareness.on('change', this.rerenderDecorations)
+    // this.awareness.on('change', this.rerenderDecorations)
     const _update = this.editor.update // listen to changes
     this.editor.update = (...args) => {
       this.onChange.apply(this, args)
@@ -97,7 +105,7 @@ export class DraftBinding {
     if (!this.value) return (this.value = raw)
     const newJson = JSON.stringify(raw)
     const oldJson = JSON.stringify(this.value)
-    if (oldJson === newJson) return // console.log(newJson, this.props.defaultValue)
+    if (oldJson === newJson) return // console.log(newJson, oldJson)
     const delta = diffRaw(this.value, raw)
     changeYmapByDelta(delta, this.ymap.get(this.rawKey))
     this.value = JSON.parse(newJson)

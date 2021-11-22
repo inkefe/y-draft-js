@@ -93,6 +93,17 @@ class TeXEditorExample extends React.Component {
     this.props.onRef && (this.props.onRef.current = this.editorRef)
     this.editorRef.setStateByRaw = this.setStateByRaw
   }
+
+  componentDidUpdate(prevProps, prevState) {
+    const newJson = JSON.stringify(this.props.defaultValue)
+    const oldJson = JSON.stringify(prevProps.defaultValue)
+    // console.log('componentDidUpdate', newJson === oldJson);
+    if (newJson !== oldJson) {
+      setTimeout(() => {
+        this._onChange(EditorState.createWithContent(convertFromRaw(this.props.defaultValue)))
+      }, 0)
+    }
+  }
   /**
    * While editing TeX, set the Draft editor to read-only. This allows us to
    * have a textarea within the DOM.

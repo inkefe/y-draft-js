@@ -109,11 +109,3 @@ export const tryCatchFunc = (fn, msg) =>
       console.warn(msg || '方法报错', error)
     }
   }
-export const transToObj = raw => typeof raw === 'string' && raw.match(/^({|\[)/) ? tryCatchFunc(raw => {
-  return JSON.parse(raw)
-})(raw) || raw : raw
-// RAW转text
-export const rawToText = raw => {
-  raw = transToObj(raw)
-  return raw?.blocks ? raw?.blocks.reduce((a, b, index) => ({ text: `${a.text}${index > 0 ? '\n' : ''}${b.text}` }), { text: '' }).text : ''
-}

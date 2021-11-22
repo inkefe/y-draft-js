@@ -25,6 +25,16 @@ const getStringDiffArray = (txt1, txt2) => {
   return DMP.diff_main(txt1, txt2)
 }
 
+export const transToObj = raw => typeof raw === 'string' && raw.match(/^({|\[)/) ? tryCatchFunc(raw => {
+  return JSON.parse(raw)
+})(raw) || raw : raw
+
+
+// RAW转text
+export const rawToText = raw => {
+  raw = transToObj(raw)
+  return raw?.blocks ? raw?.blocks.reduce((a, b, index) => ({ text: `${a.text}${index > 0 ? '\n' : ''}${b.text}` }), { text: '' }).text : ''
+}
 const getNewSelection = ({ startKey, endKey, start, end }, raw, contentState) => {
   const oldBlockArray = contentState.getBlocksAsArray();
   const newParmas = { hasFocus: true }
@@ -199,19 +209,19 @@ const getOperationByDiff = (diff, path, ymap) => {
       if(res.length === 0) {
         index = start1 
       } else {
-        const { length, type, index: _index } = res[res.length - 1]
-        index = (type === 'remain' ? length : _index) + (item[0] === 0 ? item[1].length : 0)
+        const { length, action, index: _index } = res[res.length - 1]
+        index = (action === 'retain' ? length : _index) + (item[0] === 0 ? item[1].length : 0)
       }
       // console.log(index, res);
       return [...res, {
         type: 'string',
         path,
-        action: item[0] === 0 ? 'remain' : item[0] === 1 ? 'insert' : 'delete',
+        action: item[0] === 0 ? 'retain' : item[0] === 1 ? 'insert' : 'delete',
         index,
         value: item[1],
         length: res.length === 0 ? (start1 + item[1].length) : item[1].length
       }]
-    }, []).filter(item => item.action !== 'remain')
+    }, []).filter(item => item.action !== 'retain')
   }
   if(diff.length === 1) { // add data
     return [{
@@ -280,7 +290,7 @@ export const changeYmapByDelta = (delta, ymap) => {
   const operations = getDeltaArray(delta, [], ymap)
   if(operations.length === 0) return 
   const ydoc = ymap.doc
-  console.log(operations, delta);
+  // console.log(operations, delta);
   ydoc.transact(() => {
     operations.forEach(opr => {
       applyYDocOp(opr, ymap)
