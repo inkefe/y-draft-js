@@ -64,7 +64,7 @@ export default function Editor () {
     provider.connect();
 
     return () => {
-      // draftBind.destroy()
+      draftBind.destroy()
       provider.disconnect();
     };
   }, []);

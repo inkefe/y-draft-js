@@ -65,7 +65,7 @@ export class DraftBinding {
         this.oprYText = toSyncElement(this.oprID)
         rawYmap.set(CHANGE_CLIENT, toSyncElement(this.oprID))
       }
-      rawYmap.observeDeep(this.onObserveDeep)
+      rawYmap.observeDeep(this.onObserveDeep) // observeDeep this editor's raw
     })
     this.onObserveDeep = (event, isupate) => {
       let currentTarget = null
