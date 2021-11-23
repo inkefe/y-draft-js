@@ -282,7 +282,9 @@ export function toRawSharedData(raw, ymap) {
 const getTargetByPath = (path, target) => {
   if(path.length === 0) return target
   return path.reduce((t, key) => {
-    return t.get(key)
+    const res = t.get(key)
+    !res && console.log(target, path, key);
+    return res
   }, target)
 }
 
@@ -296,7 +298,7 @@ export const changeYmapByDelta = (delta, ymap, syncOpr) => {
     operations.forEach(opr => {
       applyYDocOp(opr, ymap)
     })
-    syncOpr && syncOpr(ymap)
+    syncOpr && syncOpr.apply && syncOpr(ymap)
   })
 }
 const applyYDocOp = (opr, ymap) => {
@@ -321,29 +323,30 @@ const applyYDocOp = (opr, ymap) => {
     }
   }
   if(type === 'object') {
-    let index = 0
-    while(index < path.length && ymap.get[path[index]]) {
-      target = ymap.get[path[index]]
-      index++
-    }
-    index-- //退到此时真值的位置
-    if(index === path.length - 1) { // 遍历到底了,操作的就是最后的一个父元素
-      target = target.parent
-      index = index - 1
+    let index = path.length - 1
+    let target = getTargetByPath(path.slice(0, -1), ymap)
+    // while(index < path.length && ymap.get[path[index]]) {
+    //   target = ymap.get[path[index]]
+    //   index++
+    // }
+    // index-- //退到此时真值的位置
+    // if(index === path.length - 1) { // 遍历到底了,操作的就是最后的一个父元素
+    //   target = target.parent
+    //   index = index - 1
       if(action === 'delete') {
         return target.delete(path[index])
       }
       if(action === 'replace') {
         return target.set(path[index], value)
       }
-    }
+    // }
     // path没遍历到底，delete不需要处理了，replace需要补齐数据，防止undefined报错
-    if(action !== 'replace') return
-    index++
-    for(; index < path.length; index++) {
-      target.set(path[index], index === path.length - 1 ? value : new Y.Map())
-      target = target.get(path[index])
-    }
+    // if(action !== 'replace') return
+    // index++
+    // for(; index < path.length; index++) {
+    //   target.set(path[index], index === path.length - 1 ? value : new Y.Map())
+    //   target = target.get(path[index])
+    // }
   }
 }
 export { transRaw, getStringDiffArray, diffIndex, getNewSelection }

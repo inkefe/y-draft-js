@@ -8,11 +8,11 @@ import { transRaw, getNewSelection, changeYmapByDelta, toRawSharedData, toSyncEl
 import { diffRaw, rbw2raw } from './diff'
 
 const LOCAL_OPERATIONS = new WeakMap();
-const getRawSharedByData = (ymap, contenField) => {    
+const getRawBySharedData = (ymap, contenField) => {    
   return rbw2raw(ymap.get(contenField).toJSON())
 }
-export { toRawSharedData, getRawSharedByData }
-const CHANGE_CLIENT = 'CHANGE_CLIENT'
+export { toRawSharedData, getRawBySharedData }
+const CHANGE_CLIENT = 'CHANGE_CLIENT' // 用于识别是不是自己的更新
 export class DraftBinding {
   constructor(opts) {
     const { ymap, filed, editor, provider, parmas } = opts
@@ -32,8 +32,7 @@ export class DraftBinding {
     // ymap.doc.on('afterTransaction', update => {
     //   console.log(update, 'afterTransaction');
     // })
-    // ymap.set(CHANGE_CLIENT, Math.random())
-    ymap.observeDeep(event => this.mux(() => {
+    this.onObserveDeep = event => this.mux(() => {
       let currentTarget = null
       event.forEach(item => {
         const { path } = item
@@ -41,8 +40,9 @@ export class DraftBinding {
           currentTarget = item.currentTarget
         }
       })
-      currentTarget && this.setStateByRaw(getRawSharedByData(currentTarget, this.rawKey))
-    }))
+      currentTarget && this.setStateByRaw(getRawBySharedData(currentTarget, this.rawKey))
+    })
+    ymap.observeDeep(this.onObserveDeep)
 
     // editor.onDidChangeCursorSelection(() => {
     //   if (editor.getModel() === monacoModel) {
@@ -171,7 +171,7 @@ export class DraftBinding {
 
   destroy () {
     // this._monacoChangeHandler.dispose()
-    // this.ytext.unobserve(this._ytextObserver)
+    this.ymap.unobserveDeep(this.onObserveDeep)
     // this.doc.off('beforeAllTransactions', this._beforeTransaction)
     if (this.awareness !== null) {
       // @ts-ignore

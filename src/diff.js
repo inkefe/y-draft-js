@@ -166,7 +166,8 @@ const rbw2raw = (rbw) => {
   let entityKey = 0
   const commentMap = new Map()
   const newBlocks = blocks.map(key => {
-    const entityRanges = entityRange2Array(blockMap[key]?.entityRanges, entityPool, enityRangeMap).map(entity => {
+    if(!blockMap[key]) return
+    const entityRanges = entityRange2Array(blockMap[key].entityRanges, entityPool, enityRangeMap).map(entity => {
       const data = entity.key
       let key
       if (commentMap.has(data)) {
@@ -185,7 +186,7 @@ const rbw2raw = (rbw) => {
       ...blockMap[key],
       entityRanges,
     }
-  })
+  }).filter(Boolean)
   return {
     blocks: newBlocks,
     entityMap
