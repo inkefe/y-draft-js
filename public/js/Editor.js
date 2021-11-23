@@ -34,7 +34,7 @@ export default function Editor () {
 
   useEffect(() => {
     const draftBind = new DraftBinding({
-      ymap, filed: 'raw', editor: editorRef.current, provider, parmas
+      ymap, rawPath: contenField, editor: editorRef.current, provider, parmas
     })
     window.ymap = ymap
     provider.on("status", ({ status }) => {
@@ -51,7 +51,7 @@ export default function Editor () {
       if (!isSynced) return
       console.log(ymap.get(contenField));
       if(ymap.get(contenField)) {
-        const raw = getRawBySharedData(ymap, contenField)
+        const raw = getRawBySharedData(contenField, ymap)
         // console.log(ymap.get(contenField).toJSON());
         console.log(raw);
         setValue(raw);

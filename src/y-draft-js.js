@@ -1,44 +1,60 @@
 import * as Y from 'yjs'
-import * as error from 'lib0/error.js'
+// import * as error from 'lib0/error.js'
 // import invariant from 'tiny-invariant';
 import { createMutex } from 'lib0/mutex.js'
 import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
 import { convertFromRaw, convertToRaw, EditorState, SelectionState } from 'draft-js';
-import { transRaw, getNewSelection, changeYmapByDelta, toRawSharedData, toSyncElement } from './utils'
-import { diffRaw, rbw2raw } from './diff'
+import { transRaw, getNewSelection, changeYmapByDelta, toRawSharedData, toSyncElement, getTargetByPath } from './utils'
+import { diffRaw, rbw2raw, raw2rbw } from './diff'
 
 const LOCAL_OPERATIONS = new WeakMap();
-const getRawBySharedData = (ymap, contenField) => {   
-  const rbw = ymap.get(contenField).toJSON()
+const getRawBySharedData = (rawPath, ymap) => {   
+  !Array.isArray(rawPath) && (rawPath = [rawPath])
+  const target = getTargetByPath(rawPath, ymap)
+  if(!target) return Error(`raw not found from ${rawPath.join('.')}`)
+  const rbw = target.toJSON()
   const raw = rbw2raw(rbw)
   if(raw.blocks.length !== rbw.blocks.length) ymap.set(contenField, toRawSharedData(raw)) // 修复
   return raw
 }
-export { toRawSharedData, getRawBySharedData }
+/**
+ * Converts all elements int a Draft content to SyncElements and adds them
+ * to the SharedType
+ *
+ * @param sharedType
+ * @param raw
+ */
+function toRawSharedData(raw) {
+  const rbw = raw2rbw(raw)
+  return toSyncElement(rbw)
+}
+export { toRawSharedData, getRawBySharedData, getTargetByPath }
 const CHANGE_CLIENT = 'CHANGE_CLIENT' // 用于识别是不是自己的更新
 window.Y = Y
 export class DraftBinding {
   constructor(opts) {
-    const { ymap, filed, editor, provider, parmas } = opts
+    const { ymap, rawPath, editor, provider, parmas } = opts
+    !Array.isArray(rawPath) && (rawPath = [rawPath])
     this.editor = editor
     this.doc = ymap.doc
     this.ymap = ymap
     this.awareness = provider.awareness
-    this.mux = createMutex()
-    this.rawKey = filed
-    console.log('DraftBinding', filed, ymap.get(filed), editor, provider);
+    this.mutex = createMutex()
+    this.rawPath = rawPath
+    console.log('DraftBinding', rawPath, getTargetByPath(this.rawPath,  ymap), editor, provider);
     // editor._onSelect = e => {
     //   editor._onSelect(e)
     //   this._onSelect(e)
     // }
     // this.value = rbw2raw(ymap.get(key)?.toJSON())
-    console.log(this.value, filed);
+    console.log(this.value, this.rawPath);
     // ymap.doc.on('afterTransaction', update => {
     //   console.log(update, 'afterTransaction');
     // })
     provider.on("sync", (isSynced) => { // 判断本地操作的字段
       if (!isSynced) return
-      const rawYmap = ymap.get(filed)
+      const rawYmap = getTargetByPath(this.rawPath,  ymap)
+      if(!rawYmap) return new Error(`Could not find RAW according to pathRaw ${pathRaw.join('.')}, please initialize the data first`)
       this.rawYmap = rawYmap
       if(rawYmap.get(CHANGE_CLIENT)) {
         this.oprYText = rawYmap.get(CHANGE_CLIENT)
@@ -61,7 +77,7 @@ export class DraftBinding {
           this.oprID = originOrpId
         }
       })
-      currentTarget && this.mux(() => {
+      currentTarget && this.mutex(() => {
         this.forceRefresh(currentTarget)
       }, () => {
         this._waitUpdateTarget = currentTarget
@@ -92,14 +108,14 @@ export class DraftBinding {
     // this.awareness.on('change', this.rerenderDecorations)
     // this.onChange = this.onChange
 
-    this.onChange = editorState => this.mux(() =>{
+    this.onChange = editorState => this.mutex(() =>{
       const raw = transRaw(convertToRaw(editorState.getCurrentContent()))
       if (!this.value) return (this.value = raw)
       const newJson = JSON.stringify(raw)
       const oldJson = JSON.stringify(this.value)
       if (oldJson === newJson) return // console.log(newJson, oldJson)
       const delta = diffRaw(this.value, raw)
-      changeYmapByDelta(delta, this.ymap.get(this.rawKey), (ymap) => {
+      changeYmapByDelta(delta, getTargetByPath(this.rawPath, this.ymap), (ymap) => {
         this.oprID = this.oprID + '0'
         this.oprYText.insert(this.oprID.length, '0')
       })
@@ -130,7 +146,7 @@ export class DraftBinding {
 
   forceRefresh = (target) => {
     console.log('forceRefresh');
-    const raw = getRawBySharedData(target.parent, this.rawKey)
+    const raw = getRawBySharedData(target.parent, this.rawPath)
     this.setStateByRaw(raw)
   }
 

@@ -1,5 +1,5 @@
-import { DiffPatcher } from './jsondiffpatch.esm.js'
 import * as Y from 'yjs'
+// import invariant from 'tiny-invariant';
 import Dmp from 'diff-match-patch'
 import { convertFromRaw, convertToRaw, EditorState, SelectionState } from 'draft-js';
 import { raw2rbw } from './diff.js';
@@ -273,20 +273,14 @@ export function toSyncElement(item, path = []) {
   // }
   return item === void 0 ? '' : item;
 }
-/**
- * Converts all elements int a Draft content to SyncElements and adds them
- * to the SharedType
- *
- * @param sharedType
- * @param raw
- */
-export function toRawSharedData(raw) {
-  const rbw = raw2rbw(raw)
-  return toSyncElement(rbw)
-}
-const getTargetByPath = (path, target) => {
+
+export const getTargetByPath = (path, target, cb) => {
   if(path.length === 0) return target
-  return path.reduce((t, key) => {
+  return path.reduce((t, key, index) => {
+    if(!t) {
+      cb(key, index)
+      return t
+    }
     const res = t.get(key)
     !res && console.log(target, path, key);
     return res
