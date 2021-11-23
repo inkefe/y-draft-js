@@ -8,11 +8,15 @@ import { transRaw, getNewSelection, changeYmapByDelta, toRawSharedData, toSyncEl
 import { diffRaw, rbw2raw } from './diff'
 
 const LOCAL_OPERATIONS = new WeakMap();
-const getRawBySharedData = (ymap, contenField) => {    
-  return rbw2raw(ymap.get(contenField).toJSON())
+const getRawBySharedData = (ymap, contenField) => {   
+  const rbw = ymap.get(contenField).toJSON()
+  const raw = rbw2raw(rbw)
+  if(raw.blocks.length !== rbw.blocks.length) ymap.set(contenField, toRawSharedData(raw)) // 修复
+  return raw
 }
 export { toRawSharedData, getRawBySharedData }
 const CHANGE_CLIENT = 'CHANGE_CLIENT' // 用于识别是不是自己的更新
+window.Y = Y
 export class DraftBinding {
   constructor(opts) {
     const { ymap, filed, editor, provider, parmas } = opts
@@ -22,7 +26,7 @@ export class DraftBinding {
     this.awareness = provider.awareness
     this.mux = createMutex()
     this.rawKey = filed
-    console.log('DraftBinding', ymap.get(filed), editor, provider);
+    console.log('DraftBinding', filed, ymap.get(filed), editor, provider);
     // editor._onSelect = e => {
     //   editor._onSelect(e)
     //   this._onSelect(e)
@@ -32,17 +36,39 @@ export class DraftBinding {
     // ymap.doc.on('afterTransaction', update => {
     //   console.log(update, 'afterTransaction');
     // })
-    this.onObserveDeep = event => this.mux(() => {
+    provider.on("sync", (isSynced) => { // 判断本地操作的字段
+      if (!isSynced) return
+      const rawYmap = ymap.get(filed)
+      this.rawYmap = rawYmap
+      if(rawYmap.get(CHANGE_CLIENT)) {
+        this.oprYText = rawYmap.get(CHANGE_CLIENT)
+        this.oprYText.delete(0, this.oprYText.length - 1)
+        this.oprID = this.oprYText.toString()
+      } else {
+        this.oprID = '0'
+        this.oprYText = toSyncElement(this.oprID)
+        rawYmap.set(CHANGE_CLIENT, toSyncElement(this.oprID))
+      }
+      rawYmap.observeDeep(this.onObserveDeep)
+    })
+    this.onObserveDeep = (event, isupate) => {
       let currentTarget = null
       event.forEach(item => {
         const { path } = item
-        if(path[0] === this.rawKey && this.oprID !== item.currentTarget.get(this.rawKey).get(CHANGE_CLIENT)) { // 自己的更改不用更新
+        const originOrpId = item.currentTarget.get(CHANGE_CLIENT).toString()
+        if(path[0] !== CHANGE_CLIENT && this.oprID !== originOrpId) { // 自己的更改不用更新
           currentTarget = item.currentTarget
+          this.oprID = originOrpId
         }
       })
-      currentTarget && this.setStateByRaw(getRawBySharedData(currentTarget, this.rawKey))
-    })
-    ymap.observeDeep(this.onObserveDeep)
+      currentTarget && this.mux(() => {
+        this.forceRefresh(currentTarget)
+      }, () => {
+        this._waitUpdateTarget = currentTarget
+      })
+    }
+    console.log(ymap);
+    
 
     // editor.onDidChangeCursorSelection(() => {
     //   if (editor.getModel() === monacoModel) {
@@ -74,24 +100,40 @@ export class DraftBinding {
       if (oldJson === newJson) return // console.log(newJson, oldJson)
       const delta = diffRaw(this.value, raw)
       changeYmapByDelta(delta, this.ymap.get(this.rawKey), (ymap) => {
-        this.oprID = Math.random()
-        ymap.set(CHANGE_CLIENT, this.oprID)
+        this.oprID = this.oprID + '0'
+        this.oprYText.insert(this.oprID.length, '0')
       })
       this.value = JSON.parse(newJson)
+    }, () => {
+      console.warn('DraftBinding onChange');
     })
-    const _update = this.editor.update // listen to changes
-    _update && (this.editor.update = (...args) => {
+    this._update = this.editor.update // listen to changes
+    this._update && (this.editor.update = (...args) => {
       this.onChange.apply(this, args)
-      _update.apply(this.editor, args)
+      this._update.apply(this.editor, args)
+      if(this._waitUpdateTarget) {
+        this.forceRefresh(this._waitUpdateTarget)
+        this._waitUpdateTarget = null
+      }
     })
-    const _onChange = this.editor.onChange
-    _onChange && (this.editor.onChange = (...args) => {
+    this._onChange = this.editor.onChange
+    this._onChange && (this.editor.onChange = (...args) => {
       this.onChange.apply(this, args)
-      _onChange.apply(this.editor, args)
+      this._onChange.apply(this.editor, args)
+      if(this._waitUpdateTarget) {
+        console.log('_waitUpdateTarget');
+        this.forceRefresh(this._waitUpdateTarget)
+        this._waitUpdateTarget = null
+      }
     })
   }
 
-  oprID = Math.random()
+  forceRefresh = (target) => {
+    console.log('forceRefresh');
+    const raw = getRawBySharedData(target.parent, this.rawKey)
+    this.setStateByRaw(raw)
+  }
+
 
   _onSelect = e => {
     const editorState = this.getEditorState()
@@ -113,7 +155,7 @@ export class DraftBinding {
   }
 
   setStateByRaw = (raw) => {
-    const _onChange = this.editor.props.onChange
+    const _onChange = this._update || this._onChange
     this.value = raw
     if (!raw || !raw.blocks || !_onChange) return
     const editorState = this.getEditorState()
@@ -171,7 +213,7 @@ export class DraftBinding {
 
   destroy () {
     // this._monacoChangeHandler.dispose()
-    this.ymap.unobserveDeep(this.onObserveDeep)
+    this.rawYmap.unobserveDeep(this.onObserveDeep)
     // this.doc.off('beforeAllTransactions', this._beforeTransaction)
     if (this.awareness !== null) {
       // @ts-ignore

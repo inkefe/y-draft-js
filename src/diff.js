@@ -19,6 +19,10 @@ const diffPatcher = new DiffPatcher({
   cloneDiffValues: true
 })
 
+const formatStringLen = (length, char = '1') => {
+  return Array.from({length}).fill(char).join('')
+}
+
 const getKeyByEntityData = (entityData) => {
   const { type, data } = entityData
   switch (type) { // 保证在同一行，不同类型的entity的key不重复
@@ -49,7 +53,8 @@ const entityArray2Map = (arr) => {
     // key = rangeMap[key] ? `${key}-0` : key
     if (type === 'mention') {
       rangeMap[key] = {
-        ...item,
+        length: formatStringLen(item.length),
+        offset: formatStringLen(item.offset),
         key: {
           ...entityData,
           data: `${data.mention.id}-${data.key || data.mention.name}`
@@ -72,7 +77,8 @@ const entityArray2Map = (arr) => {
         dataKey[com.key] = 1
       })
       rangeMap[commentkey] = {
-        ...item,
+        length: formatStringLen(item.length),
+        offset: formatStringLen(item.offset),
         key: {
           ...entityData,
           data: dataKey
@@ -98,7 +104,8 @@ const entityRange2Array = (entityRanges = [], entityPool, enityRangeMap) => {
     if (type === 'mention') {
       // enityRange.data = entityPool[data]
       target = {
-        ...enityRange,
+        offset: enityRange.offset.length,
+        length: enityRange.length.length,
         key: {
           ...enityRange.key,
           data: entityPool[data]
@@ -111,7 +118,8 @@ const entityRange2Array = (entityRanges = [], entityPool, enityRangeMap) => {
         comments[i] = entityPool[key]
       })
       target = {
-        ...enityRange,
+        offset: enityRange.offset.length,
+        length: enityRange.length.length,
         key: {
           ...enityRange.key,
           data: comments
@@ -149,6 +157,11 @@ const raw2rbw = (raw) => {
       enityRangeMap = Object.assign(enityRangeMap, rangeMap)
       blockMap[item.key] = {
         ...item,
+        inlineStyleRanges: inlineStyleRanges.map(item => ({
+          ...item,
+          length: formatStringLen(item.length),
+          offset: formatStringLen(item.offset),
+        })),
         entityRanges: entityRange,
       };
       return item.key
@@ -184,6 +197,11 @@ const rbw2raw = (rbw) => {
     })
     return {
       ...blockMap[key],
+      inlineStyleRanges: blockMap[key].inlineStyleRanges.map(item => ({
+        ...item,
+        length: item.length.length,
+        offset: item.offset.length,
+      })),
       entityRanges,
     }
   }).filter(Boolean)

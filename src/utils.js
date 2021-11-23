@@ -43,6 +43,7 @@ const getNewSelection = ({ startKey, endKey, start, end }, raw, contentState) =>
   const editorText = rawToText(raw)
   const oldEditorText = contentState.getPlainText()
   const textDiff = getStringDiffArray(oldEditorText, editorText)
+  console.log(startKey, endKey, start, end);
   if (textDiff.length === 1 && textDiff[0][0] === 0) { // 文本内容没有变化，保留原来的选择状态
     return new SelectionState({
       anchorKey: startKey,
@@ -119,6 +120,7 @@ const getNewSelection = ({ startKey, endKey, start, end }, raw, contentState) =>
   newParmas.anchorKey = newParmas.anchorKey ?? startKey
   newParmas.focusKey = newParmas.focusKey ?? endKey
   if (newParmas.anchorOffset !== undefined && newParmas.focusOffset !== undefined) {
+    console.log(newParmas);
     return new SelectionState(newParmas)
   }
   // 上述的newParmas缺少anchorOffset和focusOffset，需要进一步根据start和end来调整计算
@@ -139,17 +141,17 @@ const getNewSelection = ({ startKey, endKey, start, end }, raw, contentState) =>
     const focusDiff = getStringDiffArray(oldFocusText, focusText)
     newParmas.focusOffset = diffIndex(focusDiff, end)
   }
-  // console.log(newParmas);
+  console.log(newParmas);
   return new SelectionState(newParmas)
 }
-const getDeltaArray = (diff, path = [], ymap) => {
+const getDeltaArray = (diff, path = []) => {
   let deltaArray = []
   if(!Array.isArray(diff) && !diff._t) { // 没到叶子节点
     Object.keys(diff).forEach(key => {
-      deltaArray = deltaArray.concat(getDeltaArray(diff[key], [...path, key], ymap))
+      deltaArray = deltaArray.concat(getDeltaArray(diff[key], [...path, key]))
     })
   } else {
-    deltaArray = getOperationByDiff(diff, path, ymap)
+    deltaArray = getOperationByDiff(diff, path)
   }
   return deltaArray
 }
@@ -167,7 +169,7 @@ const getDeltaArray = (diff, path = [], ymap) => {
  *  value: 'a'
  *  }
  */
-const getOperationByDiff = (diff, path, ymap) => {
+const getOperationByDiff = (diff, path) => {
   if(diff._t === 'a') { // array
     return Object.keys(diff).map(key => {
       if(key === '_t') return
@@ -190,19 +192,19 @@ const getOperationByDiff = (diff, path, ymap) => {
         }
       }
       if(isModify) {
-        return getDeltaArray(diff[key], [...path, key], ymap)
+        return getDeltaArray(diff[key], [...path, key])
       }
       return {
         ...res,
         action: 'insert',
         index: ~~key,
-        value: diff[key].map(toSyncElement)
+        value: diff[key].map(item => toSyncElement(item, [...path, key]))
       }
     }).filter(Boolean).reduce((prev, curr) => {
       return Array.isArray(curr) ? [...prev, ...curr] : [...prev, curr]
     }, [])
   }
-  if(diff[2] === 2 && path[path.length - 1] === 'text') { // text of block
+  if(diff[2] === 2 && diff.length === 3) { // text of block
     const { diffs: textDelta, start1 } = DMP.patch_fromText(diff[0])[0]
     return textDelta.reduce((res, item) => {
       let index = 0
@@ -228,10 +230,10 @@ const getOperationByDiff = (diff, path, ymap) => {
       type: 'object',
       path,
       action: 'replace',
-      value: toSyncElement(diff[0], ymap)
+      value: toSyncElement(diff[0], path)
     }]
   } 
-  if(diff.length === 3) { // delete data
+  if(diff.length === 3 && diff[2] === 0 && diff[1] === 0) { // delete data
     return [{
       type: 'object',
       path,
@@ -242,18 +244,18 @@ const getOperationByDiff = (diff, path, ymap) => {
     type: 'object',
     path,
     action: 'replace',
-    value: toSyncElement(diff[1], ymap)
+    value: toSyncElement(diff[1], path)
   }]
 }
 
-export function toSyncElement(item) {
+export function toSyncElement(item, path = []) {
   if(typeof item === 'string') {
     const textElement = new Y.Text(item);
     return textElement;
   }
 
   if (Array.isArray(item)) {
-    const childElements = item.map(item => toSyncElement(item));
+    const childElements = item.map(item => toSyncElement(item, path));
     const arrayElement = new Y.Array();
     arrayElement.insert(0, childElements);
     return arrayElement
@@ -262,10 +264,13 @@ export function toSyncElement(item) {
   if (item && typeof item === 'object') {
     const mapElement = new Y.Map();
     Object.keys(item).forEach(key => {
-      mapElement.set(key, toSyncElement(item[key]));
+      mapElement.set(key, toSyncElement(item[key], [...path, key]));
     });
     return mapElement;
   }
+  // if(typeof item === 'number' && (path[path.length - 1] === 'offset' || path[path.length - 1] === 'length')) {
+    
+  // }
   return item === void 0 ? '' : item;
 }
 /**
@@ -275,9 +280,9 @@ export function toSyncElement(item) {
  * @param sharedType
  * @param raw
  */
-export function toRawSharedData(raw, ymap) {
+export function toRawSharedData(raw) {
   const rbw = raw2rbw(raw)
-  return toSyncElement(rbw, ymap)
+  return toSyncElement(rbw)
 }
 const getTargetByPath = (path, target) => {
   if(path.length === 0) return target
@@ -290,10 +295,10 @@ const getTargetByPath = (path, target) => {
 
 export const changeYmapByDelta = (delta, ymap, syncOpr) => {
   if(!delta || delta.length === 0) return 
-  const operations = getDeltaArray(delta, [], ymap)
+  const operations = getDeltaArray(delta, [])
   if(operations.length === 0) return 
   const ydoc = ymap.doc
-  console.log(operations, delta);
+  // console.log(operations, delta);
   ydoc.transact(() => {
     operations.forEach(opr => {
       applyYDocOp(opr, ymap)
@@ -311,15 +316,17 @@ const applyYDocOp = (opr, ymap) => {
   if(type === 'array') {
     const target = getTargetByPath(path, ymap)
     if(action === 'insert') {
+      if(index === target.length) return target.push(value) // 最后一位是push方法
       return target.insert(index, value)
     }
     if(action === 'delete') {
       return target.delete(index, length)
     }
     if(action === 'move') {
+      const moveToLast = +value === target.length - 1
       const item = target.get(index)
       target.delete(index, 1)
-      return target.insert(value, [item])
+      return moveToLast ? target.push([item]) : target.insert(value, [item])  // 最后一位是push方法
     }
   }
   if(type === 'object') {

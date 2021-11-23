@@ -17,7 +17,7 @@
 import Draft from 'draft-js';
 import {Map} from 'immutable';
 import React from 'react';
-import Editor from '@draft-js-plugins/editor';
+import Editor, { createEditorStateWithText } from '@draft-js-plugins/editor';
 import createMentionPlugin, {
   defaultSuggestionsFilter,
 } from '@draft-js-plugins/mention';
@@ -39,8 +39,21 @@ import TeXBlock from './TeXBlock';
 import {insertTeXBlock} from '../modifiers/insertTeXBlock';
 import {removeTeXBlock} from '../modifiers/removeTeXBlock';
 import { mentions } from '../data/content';
-var { EditorState, RichUtils, convertToRaw, convertFromRaw} = Draft;
+const { EditorState, RichUtils, convertToRaw, convertFromRaw} = Draft;
 
+const valueToEditorState = (value) => {
+  let editorState = null
+  value = value || ''
+  if (typeof value === 'string') {
+    editorState = createEditorStateWithText(value)
+  } else {
+    if (typeof value !== 'object' || !Array.isArray(value.blocks)) return
+    else {
+      editorState = EditorState.createWithContent(convertFromRaw(value))
+    }
+  }
+  return editorState || EditorState.createEmpty();
+}
 
 const inlineToolbarPlugin = createInlineToolbarPlugin();
 const { InlineToolbar } = inlineToolbarPlugin;
@@ -48,7 +61,7 @@ class TeXEditorExample extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      editorState: EditorState.createWithContent(convertFromRaw(props.defaultValue)),
+      editorState: valueToEditorState(props.defaultValue),
       liveTeXEdits: Map(),
       open: false,
       suggestions: mentions

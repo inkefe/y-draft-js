@@ -16,7 +16,7 @@ const parmas = {
 export default function Editor () {
   const editorRef = React.useRef(null)
   const [isOnline, setOnlineState] = useState(false);
-  const [value, setValue] = useState(rawContent);
+  const [value, setValue] = useState(null);
   const [ymap, provider] = useMemo(() => {
     const ydoc = new Y.Doc();
     const ymap = ydoc.getMap(id)
@@ -57,7 +57,7 @@ export default function Editor () {
         setValue(raw);
       } else {
         console.log('初始化');
-        ymap.set(contenField, toRawSharedData(value, ymap))
+        ymap.set(contenField, toRawSharedData(value || rawContent, ymap))
       }
     });
 
