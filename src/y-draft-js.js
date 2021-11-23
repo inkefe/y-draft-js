@@ -12,50 +12,38 @@ const getRawSharedByData = (ymap, contenField) => {
   return rbw2raw(ymap.get(contenField).toJSON())
 }
 export { toRawSharedData, getRawSharedByData }
+const CHANGE_CLIENT = 'CHANGE_CLIENT'
 export class DraftBinding {
-  constructor(ymap, key = 'raw', editor, provider) {
+  constructor(opts) {
+    const { ymap, filed, editor, provider, parmas } = opts
     this.editor = editor
     this.doc = ymap.doc
     this.ymap = ymap
     this.awareness = provider.awareness
     this.mux = createMutex()
-    this.rawKey = key
-    console.log('DraftBinding', ymap, editor, provider);
+    this.rawKey = filed
+    console.log('DraftBinding', ymap.get(filed), editor, provider);
     // editor._onSelect = e => {
     //   editor._onSelect(e)
     //   this._onSelect(e)
     // }
     // this.value = rbw2raw(ymap.get(key)?.toJSON())
-    console.log(this.value, key);
+    console.log(this.value, filed);
     // ymap.doc.on('afterTransaction', update => {
     //   console.log(update, 'afterTransaction');
     // })
+    // ymap.set(CHANGE_CLIENT, Math.random())
     ymap.observeDeep(event => this.mux(() => {
       let currentTarget = null
       event.forEach(item => {
-        // console.log(item, 'observeDeep');
         const { path } = item
-        if(path[0] === this.rawKey) {
+        if(path[0] === this.rawKey && this.oprID !== item.currentTarget.get(this.rawKey).get(CHANGE_CLIENT)) { // 自己的更改不用更新
           currentTarget = item.currentTarget
-          // 
-          // hasChange = true
         }
-        item.changes.keys.forEach((change, key) => {
-          // if (change.action === 'add') {
-          //   console.log(`Property "${key}" was added. Initial value: `, ymap.get(key))
-          // } else if (change.action === 'update') {
-          //   console.log(`Property "${key}" was updated. New value: `, ymap.get(key), `. Previous value: `, change.oldValue)
-          // } else if (change.action === 'delete') {
-          //   console.log(`Property "${key}" was deleted. New value: undefined. Previous value: `, change.oldValue)
-          // }
-          // const rbw = ymap.get(key).toJSON()
-          // const raw = rbw2raw(rbw)
-          // console.log(item, 'observeDeep');
-        })
       })
       currentTarget && this.setStateByRaw(getRawSharedByData(currentTarget, this.rawKey))
-      // console.log('delta:', event)
     }))
+
     // editor.onDidChangeCursorSelection(() => {
     //   if (editor.getModel() === monacoModel) {
     //     const sel = editor.getSelection()
@@ -76,6 +64,21 @@ export class DraftBinding {
     //   }
     // })
     // this.awareness.on('change', this.rerenderDecorations)
+    // this.onChange = this.onChange
+
+    this.onChange = editorState => this.mux(() =>{
+      const raw = transRaw(convertToRaw(editorState.getCurrentContent()))
+      if (!this.value) return (this.value = raw)
+      const newJson = JSON.stringify(raw)
+      const oldJson = JSON.stringify(this.value)
+      if (oldJson === newJson) return // console.log(newJson, oldJson)
+      const delta = diffRaw(this.value, raw)
+      changeYmapByDelta(delta, this.ymap.get(this.rawKey), (ymap) => {
+        this.oprID = Math.random()
+        ymap.set(CHANGE_CLIENT, this.oprID)
+      })
+      this.value = JSON.parse(newJson)
+    })
     const _update = this.editor.update // listen to changes
     _update && (this.editor.update = (...args) => {
       this.onChange.apply(this, args)
@@ -87,6 +90,8 @@ export class DraftBinding {
       _onChange.apply(this.editor, args)
     })
   }
+
+  oprID = Math.random()
 
   _onSelect = e => {
     const editorState = this.getEditorState()
@@ -106,17 +111,6 @@ export class DraftBinding {
   getEditorState = () => {
     return this.editor.props.editorState
   }
-  onChange = (editorState) => {
-    const raw = transRaw(convertToRaw(editorState.getCurrentContent()))
-    if (!this.value) return (this.value = raw)
-    const newJson = JSON.stringify(raw)
-    const oldJson = JSON.stringify(this.value)
-    if (oldJson === newJson) return // console.log(newJson, oldJson)
-    const delta = diffRaw(this.value, raw)
-    changeYmapByDelta(delta, this.ymap.get(this.rawKey))
-    this.value = JSON.parse(newJson)
-    // LOCAL_OPERATIONS.set(this.editor, this.value)
-  }
 
   setStateByRaw = (raw) => {
     const _onChange = this.editor.props.onChange
@@ -125,10 +119,9 @@ export class DraftBinding {
     const editorState = this.getEditorState()
     const selectionState = editorState.getSelection();
     const newEditorState = EditorState.push(editorState, convertFromRaw(raw), 'sycn-change')
-    // if (!selectionState.getHasFocus()) {
-    //   console.log('notFocus');
-    //   return _onChange(newEditorState, true);
-    // }
+    if (!selectionState.getHasFocus()) {
+      return _onChange(newEditorState);
+    }
     const contentState = editorState.getCurrentContent();
     const startKey = selectionState.getStartKey();
     const endKey = selectionState.getEndKey();
@@ -136,7 +129,7 @@ export class DraftBinding {
     const end = selectionState.getEndOffset();
     const newSelection = getNewSelection({ startKey, endKey, start, end }, raw, contentState)
 
-    _onChange(EditorState.forceSelection(newEditorState, newSelection), true);
+    _onChange(EditorState.forceSelection(newEditorState, newSelection));
   }
 
   decorations = new Map()

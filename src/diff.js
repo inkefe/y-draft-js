@@ -1,5 +1,5 @@
 import Dmp from 'diff-match-patch'
-// import { isEmpty, isEqual } from 'lodash'
+import { isEmpty, isEqual } from 'lodash'
 import { DiffPatcher } from './jsondiffpatch.esm.js'
 import { transRaw } from './utils'
 

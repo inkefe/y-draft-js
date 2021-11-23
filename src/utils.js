@@ -196,7 +196,7 @@ const getOperationByDiff = (diff, path, ymap) => {
         ...res,
         action: 'insert',
         index: ~~key,
-        value: toSyncElement(diff[key], ymap)
+        value: diff[key].map(toSyncElement)
       }
     }).filter(Boolean).reduce((prev, curr) => {
       return Array.isArray(curr) ? [...prev, ...curr] : [...prev, curr]
@@ -246,14 +246,14 @@ const getOperationByDiff = (diff, path, ymap) => {
   }]
 }
 
-export function toSyncElement(item, ymap) {
+export function toSyncElement(item) {
   if(typeof item === 'string') {
     const textElement = new Y.Text(item);
     return textElement;
   }
 
   if (Array.isArray(item)) {
-    const childElements = item.map(item => toSyncElement(item, ymap));
+    const childElements = item.map(item => toSyncElement(item));
     const arrayElement = new Y.Array();
     arrayElement.insert(0, childElements);
     return arrayElement
@@ -262,7 +262,7 @@ export function toSyncElement(item, ymap) {
   if (item && typeof item === 'object') {
     const mapElement = new Y.Map();
     Object.keys(item).forEach(key => {
-      mapElement.set(key, toSyncElement(item[key], ymap));
+      mapElement.set(key, toSyncElement(item[key]));
     });
     return mapElement;
   }
@@ -285,8 +285,9 @@ const getTargetByPath = (path, target) => {
     return t.get(key)
   }, target)
 }
-export const changeYmapByDelta = (delta, ymap) => {
-  if(!delta) return 
+
+export const changeYmapByDelta = (delta, ymap, syncOpr) => {
+  if(!delta || delta.length === 0) return 
   const operations = getDeltaArray(delta, [], ymap)
   if(operations.length === 0) return 
   const ydoc = ymap.doc
@@ -295,6 +296,7 @@ export const changeYmapByDelta = (delta, ymap) => {
     operations.forEach(opr => {
       applyYDocOp(opr, ymap)
     })
+    syncOpr && syncOpr(ymap)
   })
 }
 const applyYDocOp = (opr, ymap) => {
@@ -319,12 +321,28 @@ const applyYDocOp = (opr, ymap) => {
     }
   }
   if(type === 'object') {
-    const target = getTargetByPath(path.slice(0, -1), ymap)
-    if(action === 'replace') {
-      return target.set(path[path.length - 1], value)
+    let index = 0
+    while(index < path.length && ymap.get[path[index]]) {
+      target = ymap.get[path[index]]
+      index++
     }
-    if(action === 'delete') {
-      return target.delete(path[path.length - 1])
+    index-- //退到此时真值的位置
+    if(index === path.length - 1) { // 遍历到底了,操作的就是最后的一个父元素
+      target = target.parent
+      index = index - 1
+      if(action === 'delete') {
+        return target.delete(path[index])
+      }
+      if(action === 'replace') {
+        return target.set(path[index], value)
+      }
+    }
+    // path没遍历到底，delete不需要处理了，replace需要补齐数据，防止undefined报错
+    if(action !== 'replace') return
+    index++
+    for(; index < path.length; index++) {
+      target.set(path[index], index === path.length - 1 ? value : new Y.Map())
+      target = target.get(path[index])
     }
   }
 }

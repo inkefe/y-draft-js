@@ -10,6 +10,9 @@ import TeXEditorExample from './components/TeXEditorExample';
 
 const id = 'draf-tex'
 const contenField = 'raw'
+const parmas = {
+  user: Math.random().toString(36).substring(7),
+}
 export default function Editor () {
   const editorRef = React.useRef(null)
   const [isOnline, setOnlineState] = useState(false);
@@ -30,7 +33,10 @@ export default function Editor () {
   }, [id])
 
   useEffect(() => {
-    const draftBind = new DraftBinding(ymap, contenField, editorRef.current, provider)
+    const draftBind = new DraftBinding({
+      ymap, filed: 'raw', editor: editorRef.current, provider, parmas
+    })
+    window.ymap = ymap
     provider.on("status", ({ status }) => {
       setOnlineState(status === "connected");
     });
@@ -50,6 +56,7 @@ export default function Editor () {
         console.log(raw);
         setValue(raw);
       } else {
+        console.log('初始化');
         ymap.set(contenField, toRawSharedData(value, ymap))
       }
     });
