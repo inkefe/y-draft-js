@@ -2,19 +2,19 @@ import * as Y from 'yjs'
 // import * as error from 'lib0/error.js'
 // import invariant from 'tiny-invariant';
 import { createMutex } from 'lib0/mutex.js'
-import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
+// import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
 import { convertFromRaw, convertToRaw, EditorState, SelectionState } from 'draft-js';
 import { transRaw, getNewSelection, changeYmapByDelta, toSyncElement, getTargetByPath } from './utils'
 import { diffRaw, rbw2raw, raw2rbw } from './diff'
 
 const LOCAL_OPERATIONS = new WeakMap();
-const getRawBySharedData = (rawPath, ymap) => {   
-  !Array.isArray(rawPath) && (rawPath = [rawPath])
+const getRawBySharedData = (rawPath, ymap) => {
+  !Array.isArray(rawPath) && (rawPath = [ rawPath ])
   const target = getTargetByPath(rawPath, ymap)
-  if(!target) return Error(`raw not found from ${rawPath.join('.')}`)
+  if (!target) return null
   const rbw = target.toJSON()
   const raw = rbw2raw(rbw)
-  if(raw.blocks.length !== rbw.blocks.length) ymap.set(contenField, toRawSharedData(raw)) // 修复
+  if (raw.blocks.length !== rbw.blocks.length) ymap.set(rawPath, toRawSharedData(raw)) // 修复
   return raw
 }
 /**
@@ -35,27 +35,27 @@ export class DraftBinding {
   constructor(opts) {
     const { ymap, rawPath: _rawPath, editor, provider, parmas } = opts
     let rawPath = _rawPath
-    !Array.isArray(rawPath) && (rawPath = [rawPath])
+    !Array.isArray(rawPath) && (rawPath = [ rawPath ])
     this.doc = ymap.doc
     this.ymap = ymap
     this.awareness = provider.awareness
     this.mutex = createMutex()
     this.rawPath = rawPath
-    console.log('DraftBinding', rawPath, getTargetByPath(this.rawPath,  ymap), editor, provider);
+    console.log('DraftBinding', opts, getTargetByPath(this.rawPath, ymap), editor, provider);
     // editor._onSelect = e => {
     //   editor._onSelect(e)
     //   this._onSelect(e)
     // }
     // this.value = rbw2raw(ymap.get(key)?.toJSON())
-    console.log(this.value, this.rawPath);
+    // console.log(this.value, this.rawPath);
     // ymap.doc.on('afterTransaction', update => {
     //   console.log(update, 'afterTransaction');
     // })
 
-    provider.on("sync", (isSynced) => {
+    provider.on('sync', (isSynced) => {
       if (!isSynced) return
-      const rawYmap = getTargetByPath(this.rawPath,  ymap)
-      if(!rawYmap) return this.listenYmap(ymap) // new Error(`Could not find RAW according to pathRaw ${pathRaw.join('.')}, please initialize the data first`)
+      const rawYmap = getTargetByPath(this.rawPath, ymap)
+      if (!rawYmap) return this.listenYmap(ymap) // new Error(`Could not find RAW according to pathRaw ${pathRaw.join('.')}, please initialize the data first`)
       this.listenTargetYmap(rawYmap)
     })
     this.onObserveDeep = (event, isupate) => {
@@ -63,18 +63,13 @@ export class DraftBinding {
       event.forEach(item => {
         const { path } = item
         const originOrpId = item.currentTarget.get(CHANGE_CLIENT).toString()
-        if(path[0] !== CHANGE_CLIENT && this.oprID !== originOrpId) { // 自己的更改不用更新
+        if (path[0] !== CHANGE_CLIENT && this.oprID !== originOrpId) { // 自己的更改不用更新
           currentTarget = item.currentTarget
           this.oprID = originOrpId
         }
       })
-      currentTarget && this.mutex(() => {
-        this.forceRefresh(currentTarget)
-      }, () => {
-        this._waitUpdateTarget = currentTarget
-      })
+      currentTarget && this.forceRefresh(currentTarget)
     }
-    
 
     // editor.onDidChangeCursorSelection(() => {
     //   if (editor.getModel() === monacoModel) {
@@ -97,8 +92,9 @@ export class DraftBinding {
     // })
     // this.awareness.on('change', this.rerenderDecorations)
     // this.onChange = this.onChange
-
-    this.onChange = editorState => this.mutex(() =>{
+  
+    this.onChange = editorState => this.mutex(() => {
+      this.editorState = editorState
       const raw = transRaw(convertToRaw(editorState.getCurrentContent()))
       if (!this.value) return (this.value = raw)
       const newJson = JSON.stringify(raw)
@@ -117,26 +113,35 @@ export class DraftBinding {
   }
 
   forceRefresh = (target) => {
-    // console.log('forceRefresh');
     const raw = getRawBySharedData(this.rawPath, target.parent)
-    this.setStateByRaw(raw)
+    this.muxSetRaw(raw)
+  }
+
+  muxSetRaw = (raw) => {
+    this.mutex(() => {
+      this.setStateByRaw(raw)
+      this._waitUpdateTarget = null
+    }, () => {
+      console.warn('setStateByRaw');
+      this._waitUpdateTarget = raw
+    })
   }
 
   listenYmap = (ymap) => {
-    ymap.observeDeep(this.outerMapObserveDeep)
+    ymap.observeDeep(this.outerMapObserveDeep(ymap))
   }
 
-  outerMapObserveDeep = e => {
-    const rawYmap = getTargetByPath(this.rawPath,  ymap)
+  outerMapObserveDeep = ymap => e => {
+    const rawYmap = getTargetByPath(this.rawPath, ymap)
     console.log('outerMapObserveDeep', rawYmap);
-    if(!rawYmap) return // 等待目标字段的内容出现
+    if (!rawYmap) return // 等待目标字段的内容出现
     this.listenTargetYmap(rawYmap)
     ymap.unobserveDeep(this.outerMapObserveDeep)
   }
 
   listenTargetYmap = (rawYmap) => {
     this.rawYmap = rawYmap
-    if(rawYmap.get(CHANGE_CLIENT)) { // A tag used to record local actions to prevent executing `setStateByRaw()`
+    if (rawYmap.get(CHANGE_CLIENT)) { // A tag used to record local actions to prevent executing `setStateByRaw()`
       this.oprYText = rawYmap.get(CHANGE_CLIENT)
       this.oprYText.delete(0, this.oprYText.length - 1)
       this.oprID = this.oprYText.toString()
@@ -145,6 +150,7 @@ export class DraftBinding {
       this.oprYText = toSyncElement(this.oprID)
       rawYmap.set(CHANGE_CLIENT, toSyncElement(this.oprID))
     }
+    this.value = rbw2raw(rawYmap.toJSON())
     rawYmap.observeDeep(this.onObserveDeep) // observeDeep this editor's raw
   }
 
@@ -155,101 +161,116 @@ export class DraftBinding {
     this._update && (this.editor.update = (...args) => {
       this.onChange.apply(this, args)
       this._update.apply(this.editor, args)
-      if(this._waitUpdateTarget) {
-        this.forceRefresh(this._waitUpdateTarget)
-        this._waitUpdateTarget = null
+      if (this._waitUpdateTarget) {
+        this.editorState = args[0]
+        this.muxSetRaw(this._waitUpdateTarget)
       }
     })
+    if (this._update) return
     this._onChange = this.editor.onChange
     this._onChange && (this.editor.onChange = (...args) => {
       this.onChange.apply(this, args)
       this._onChange.apply(this.editor, args)
-      if(this._waitUpdateTarget) {
-        this.forceRefresh(this._waitUpdateTarget)
-        this._waitUpdateTarget = null
+      if (this._waitUpdateTarget) {
+        this.editorState = args[0]
+        this.muxSetRaw(this._waitUpdateTarget)
       }
     })
   }
 
-  _onSelect = e => {
-    const editorState = this.getEditorState()
-    const selection = editorState.getSelection()
-    let anchor = monacoModel.getOffsetAt(sel.getStartPosition())
-    let head = monacoModel.getOffsetAt(sel.getEndPosition())
-    if (sel.getDirection() === monaco.SelectionDirection.RTL) {
-      const tmp = anchor
-      anchor = head
-      head = tmp
-    }
-    this.awareness.setLocalStateField('selection', {
-      anchor: Y.createRelativePositionFromTypeIndex(this.ytext, anchor),
-      head: Y.createRelativePositionFromTypeIndex(this.ytext, head)
-    })
-  }
+  // _onSelect = e => {
+  //   const editorState = this.getEditorState()
+  //   const selection = editorState.getSelection()
+  //   let anchor = monacoModel.getOffsetAt(sel.getStartPosition())
+  //   let head = monacoModel.getOffsetAt(sel.getEndPosition())
+  //   if (sel.getDirection() === monaco.SelectionDirection.RTL) {
+  //     const tmp = anchor
+  //     anchor = head
+  //     head = tmp
+  //   }
+  //   this.awareness.setLocalStateField('selection', {
+  //     anchor: Y.createRelativePositionFromTypeIndex(this.ytext, anchor),
+  //     head: Y.createRelativePositionFromTypeIndex(this.ytext, head)
+  //   })
+  // }
+
   getEditorState = () => {
-    return this.editor.props.editorState
+    return this.editorState || this.editor.props.editorState || this.editor.state.editorState
   }
 
   setStateByRaw = (raw) => {
     const _onChange = this._update || this._onChange
-    this.value = raw
     if (!raw || !raw.blocks || !_onChange) return
     const editorState = this.getEditorState()
     const selectionState = editorState.getSelection();
     const newEditorState = EditorState.push(editorState, convertFromRaw(raw), 'sycn-change')
-    if (!selectionState.getHasFocus()) {
-      return _onChange(newEditorState);
+    const isCollapsed = selectionState.isCollapsed()
+    if (!selectionState.getHasFocus() && isCollapsed) {
+      this.editorState = newEditorState
+      this.value = raw
+      return _onChange.call(this.editor, this.editorState);
     }
+    this.setStateAndSelection(_onChange, newEditorState, isCollapsed, raw)
+  }
+
+  setStateAndSelection = (_onChange, newEditorState, isCollapsed, raw) => {
+    const editorState = this.getEditorState()
+    const selectionState = editorState.getSelection();
     const contentState = editorState.getCurrentContent();
     const startKey = selectionState.getStartKey();
     const endKey = selectionState.getEndKey();
     const start = selectionState.getStartOffset();
     const end = selectionState.getEndOffset();
     const newSelection = getNewSelection({ startKey, endKey, start, end }, raw, contentState)
-
-    _onChange(EditorState.forceSelection(newEditorState, newSelection));
+    // this.localSelectionState = newSelection
+    this.editorState = EditorState[isCollapsed ? 'acceptSelection' : 'acceptSelection'](newEditorState, newSelection)
+    this.value = raw
+    _onChange.call(this.editor, this.editorState);
   }
 
   decorations = new Map()
 
   // 渲染光标
-  rerenderDecorations = () => {
-    // const currentDecorations = this.decorations.get(this.editor) || []
-    const newDecorations = []
-    this.awareness.getStates().forEach((state, clientID) => {
-      if (clientID !== this.doc.clientID && state.selection != null && state.selection.anchor != null && state.selection.head != null) {
-        const anchorAbs = Y.createAbsolutePositionFromRelativePosition(state.selection.anchor, this.doc)
-        const headAbs = Y.createAbsolutePositionFromRelativePosition(state.selection.head, this.doc)
-        if (anchorAbs !== null && headAbs !== null && anchorAbs.type === ytext && headAbs.type === ytext) {
-          let start, end, afterContentClassName, beforeContentClassName
-          if (anchorAbs.index < headAbs.index) {
-            start = monacoModel.getPositionAt(anchorAbs.index)
-            end = monacoModel.getPositionAt(headAbs.index)
-            afterContentClassName = 'yRemoteSelectionHead'
-            beforeContentClassName = null
-          } else {
-            start = monacoModel.getPositionAt(headAbs.index)
-            end = monacoModel.getPositionAt(anchorAbs.index)
-            afterContentClassName = null
-            beforeContentClassName = 'yRemoteSelectionHead'
-          }
-          // newDecorations.push({
-          //   range: new SelectionState(start.lineNumber, start.column, end.lineNumber, end.column),
-          //   options: {
-          //     className: 'yRemoteSelection',
-          //     afterContentClassName,
-          //     beforeContentClassName
-          //   }
-          // })
-        }
-      }
-    })
-    // this.decorations.set(editor, editor.deltaDecorations(currentDecorations, newDecorations))
-  }
+  // rerenderDecorations = () => {
+  //   // const currentDecorations = this.decorations.get(this.editor) || []
+  //   const newDecorations = []
+  //   this.awareness.getStates().forEach((state, clientID) => {
+  //     if (clientID !== this.doc.clientID && state.selection != null && state.selection.anchor != null && state.selection.head != null) {
+  //       const anchorAbs = Y.createAbsolutePositionFromRelativePosition(state.selection.anchor, this.doc)
+  //       const headAbs = Y.createAbsolutePositionFromRelativePosition(state.selection.head, this.doc)
+  //       if (anchorAbs !== null && headAbs !== null && anchorAbs.type === ytext && headAbs.type === ytext) {
+  //         let start, end, afterContentClassName, beforeContentClassName
+  //         if (anchorAbs.index < headAbs.index) {
+  //           start = monacoModel.getPositionAt(anchorAbs.index)
+  //           end = monacoModel.getPositionAt(headAbs.index)
+  //           afterContentClassName = 'yRemoteSelectionHead'
+  //           beforeContentClassName = null
+  //         } else {
+  //           start = monacoModel.getPositionAt(headAbs.index)
+  //           end = monacoModel.getPositionAt(anchorAbs.index)
+  //           afterContentClassName = null
+  //           beforeContentClassName = 'yRemoteSelectionHead'
+  //         }
+  //         // newDecorations.push({
+  //         //   range: new SelectionState(start.lineNumber, start.column, end.lineNumber, end.column),
+  //         //   options: {
+  //         //     className: 'yRemoteSelection',
+  //         //     afterContentClassName,
+  //         //     beforeContentClassName
+  //         //   }
+  //         // })
+  //       }
+  //     }
+  //   })
+  //   // this.decorations.set(editor, editor.deltaDecorations(currentDecorations, newDecorations))
+  // }
 
   destroy () {
+    console.warn('y-darf-js is destoryed');
+    this._update && this.editor && (this.editor.update = this._update)
+    this._onChange && this.editor && (this.editor.onChange = this._onChange)
     // this._monacoChangeHandler.dispose()
-    this.rawYmap.unobserveDeep(this.onObserveDeep)
+    this.rawYmap && this.rawYmap.unobserveDeep(this.onObserveDeep)
     // this.doc.off('beforeAllTransactions', this._beforeTransaction)
     if (this.awareness !== null) {
       // @ts-ignore

@@ -20,7 +20,7 @@ const diffPatcher = new DiffPatcher({
 })
 
 const formatStringLen = (length, char = '1') => {
-  return Array.from({length}).fill(char).join('')
+  return Array.from({ length }).fill(char).join('')
 }
 
 const getKeyByEntityData = (entityData) => {
@@ -99,7 +99,7 @@ const entityRange2Array = (entityRanges = [], entityPool, enityRangeMap) => {
   for (const index in entityRanges) {
     let target = null
     const enityRange = enityRangeMap[index]
-    if(!enityRange?.key) continue
+    if (!enityRange?.key) continue
     const { type, data } = enityRange.key
     if (type === 'mention') {
       // enityRange.data = entityPool[data]
@@ -179,7 +179,7 @@ const rbw2raw = (rbw) => {
   let entityKey = 0
   const commentMap = new Map()
   const newBlocks = blocks.map(key => {
-    if(!blockMap[key]) return
+    if (!blockMap[key]) return null
     const entityRanges = entityRange2Array(blockMap[key].entityRanges, entityPool, enityRangeMap).map(entity => {
       const data = entity.key
       let key
@@ -199,8 +199,8 @@ const rbw2raw = (rbw) => {
       ...blockMap[key],
       inlineStyleRanges: blockMap[key].inlineStyleRanges.map(item => ({
         ...item,
-        length: item.length.length,
-        offset: item.offset.length,
+        length: item.length?.length || 0,
+        offset: item.offset?.length || 0,
       })),
       entityRanges,
     }

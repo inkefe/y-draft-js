@@ -125,11 +125,18 @@
   color: #666;
 }
 
-.TeXEditor-insert {
+.TeXEditor-insert, .insert-button {
   background-color: #f1f1f1;
   border: 1px solid #ccc;
   border-radius: 3px;
   bottom: 30px;
   position: fixed;
+  height: 28px;
+  line-height: 28px;
+  z-index: 66;
+  cursor: pointer;
   right: 30px;
+}
+.insert-button{
+  bottom: 70px;
 }

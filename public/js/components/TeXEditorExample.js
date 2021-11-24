@@ -14,9 +14,10 @@
 
 'use strict';
 
-import Draft from 'draft-js';
+import Draft, { Modifier, SelectionState } from 'draft-js';
 import {Map} from 'immutable';
 import React from 'react';
+import faker from 'faker';
 import Editor, { createEditorStateWithText } from '@draft-js-plugins/editor';
 import createMentionPlugin, {
   defaultSuggestionsFilter,
@@ -64,6 +65,7 @@ class TeXEditorExample extends React.Component {
       editorState: valueToEditorState(props.defaultValue),
       liveTeXEdits: Map(),
       open: false,
+      isMock: false,
       suggestions: mentions
     };
 
@@ -123,7 +125,7 @@ class TeXEditorExample extends React.Component {
       });
     };
 
-    this._insertTeX = () => {
+    this.consoleRaw = () => {
       console.log(convertToRaw(this.state.editorState.getCurrentContent()));
       // this.setState({
       //   liveTeXEdits: Map(),
@@ -132,9 +134,51 @@ class TeXEditorExample extends React.Component {
     };
   }
 
+  mockInsertText = () => {
+    const { isMock } = this.state
+    this.setState({ isMock: !isMock })
+    if(!isMock) {
+      this.timer = window.setInterval(this.autoInsertText, 100)
+    } else {
+      window.clearInterval(this.timer)
+      this.timer = null
+    }
+  }
+
+  autoInsertText = () => {
+    const { editorState } = this.state
+    const content = editorState.getCurrentContent()
+    const blocks = content.getBlocksAsArray().map(block => ({
+      key: block.getKey(),
+      length: block.getLength(),
+    }))
+    const number = faker.datatype.number({
+      min: 0,
+      max: blocks.length - 1,
+    })
+    const anchorOffset = faker.datatype.number({
+      min: 0,
+      max: blocks[number].length,
+    })
+    const randomChar = String.fromCharCode(faker.datatype.number({
+      min: 32,
+      max: 126,
+    }))
+    const isSpace = faker.datatype.number({
+      min: 0,
+      max: 8,
+    })
+    const newContentState = Modifier.insertText(content, new SelectionState({
+      anchorKey: blocks[number].key,
+      focusKey: blocks[number].key,
+      anchorOffset,
+      focusOffset: anchorOffset,
+    }), isSpace < 2 ? ' ' : randomChar)
+    this.editorRef.editor.update(EditorState.push(editorState, newContentState, 'insert-characters'))
+  }
+
   componentDidMount () {
     this.props.onRef && (this.props.onRef.current = this.editorRef)
-    this.editorRef.setStateByRaw = this.setStateByRaw
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -162,7 +206,7 @@ class TeXEditorExample extends React.Component {
    */
   render() {
     const { MentionSuggestions, plugins } = this
-    const { editorState, liveTeXEdits, open, suggestions } = this.state;
+    const { editorState, liveTeXEdits, open, suggestions, isMock } = this.state;
     return (
       <div className="TexEditor-container">
         <div className="TeXEditor-root">
@@ -207,8 +251,11 @@ class TeXEditorExample extends React.Component {
             }
           </InlineToolbar>
         </div>
-        <button onClick={this._insertTeX} className="TeXEditor-insert">
+        <button onClick={this.consoleRaw} className="TeXEditor-insert">
           {'console raw'}
+        </button>
+        <button onClick={this.mockInsertText} className="insert-button">
+          {isMock ? 'stop mock...' : 'mock input'}
         </button>
       </div>
     );

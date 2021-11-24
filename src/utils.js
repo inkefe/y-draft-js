@@ -10,7 +10,15 @@ const transRaw = raw => {
   const res = JSON.parse(JSON.stringify(raw).replace(reg, (_, $1) => `,"${$1}":{}`))
   return res
 }
-
+// 对方法进行封装，防止内部报错
+export const tryCatchFunc = (fn, msg) =>
+  function(...args) {
+    try {
+      return typeof fn === 'function' && fn.apply(this, args)
+    } catch (error) {
+      console.warn(msg || '方法报错', error)
+    }
+  }
 const DMP = new Dmp()
 // 计算序号, 默认不跟随内容更改
 const diffIndex = (diffArr, index, needFlow) => {
@@ -29,7 +37,6 @@ export const transToObj = raw => typeof raw === 'string' && raw.match(/^({|\[)/)
   return JSON.parse(raw)
 })(raw) || raw : raw
 
-
 // RAW转text
 export const rawToText = raw => {
   raw = transToObj(raw)
@@ -43,7 +50,7 @@ const getNewSelection = ({ startKey, endKey, start, end }, raw, contentState) =>
   const editorText = rawToText(raw)
   const oldEditorText = contentState.getPlainText()
   const textDiff = getStringDiffArray(oldEditorText, editorText)
-  console.log(startKey, endKey, start, end);
+  // console.log(startKey, endKey, start, end);
   if (textDiff.length === 1 && textDiff[0][0] === 0) { // 文本内容没有变化，保留原来的选择状态
     return new SelectionState({
       anchorKey: startKey,
@@ -120,7 +127,7 @@ const getNewSelection = ({ startKey, endKey, start, end }, raw, contentState) =>
   newParmas.anchorKey = newParmas.anchorKey ?? startKey
   newParmas.focusKey = newParmas.focusKey ?? endKey
   if (newParmas.anchorOffset !== undefined && newParmas.focusOffset !== undefined) {
-    console.log(newParmas);
+    // console.log(newParmas);
     return new SelectionState(newParmas)
   }
   // 上述的newParmas缺少anchorOffset和focusOffset，需要进一步根据start和end来调整计算
@@ -141,14 +148,14 @@ const getNewSelection = ({ startKey, endKey, start, end }, raw, contentState) =>
     const focusDiff = getStringDiffArray(oldFocusText, focusText)
     newParmas.focusOffset = diffIndex(focusDiff, end)
   }
-  console.log(newParmas);
+  // console.log(newParmas);
   return new SelectionState(newParmas)
 }
 const getDeltaArray = (diff, path = []) => {
   let deltaArray = []
-  if(!Array.isArray(diff) && !diff._t) { // 没到叶子节点
+  if (!Array.isArray(diff) && !diff._t) { // 没到叶子节点
     Object.keys(diff).forEach(key => {
-      deltaArray = deltaArray.concat(getDeltaArray(diff[key], [...path, key]))
+      deltaArray = deltaArray.concat(getDeltaArray(diff[key], [ ...path, key ]))
     })
   } else {
     deltaArray = getOperationByDiff(diff, path)
@@ -156,8 +163,8 @@ const getDeltaArray = (diff, path = []) => {
   return deltaArray
 }
 /**
- * 
- * @param {*} diff 
+ *
+ * @param {*} diff
  * @param {Array} path
  * @returns {Array}
  *  {
@@ -170,15 +177,15 @@ const getDeltaArray = (diff, path = []) => {
  *  }
  */
 const getOperationByDiff = (diff, path) => {
-  if(diff._t === 'a') { // array
-    return Object.keys(diff).map(key => {
-      if(key === '_t') return
+  if (diff._t === 'a') { // array
+    return Object.keys(diff).reverse().map(key => {
+      if (key === '_t') return null
       const res = {
         type: 'array',
         path
       }
       const isModify = !Array.isArray(diff[key])
-      if(key[0] === '_') {
+      if (key[0] === '_') {
         return diff[key][2] === 3 ? { // move
           ...res,
           action: 'move',
@@ -191,65 +198,65 @@ const getOperationByDiff = (diff, path) => {
           length: 1
         }
       }
-      if(isModify) {
-        return getDeltaArray(diff[key], [...path, key])
+      if (isModify) {
+        return getDeltaArray(diff[key], [ ...path, key ])
       }
       return {
         ...res,
         action: 'insert',
         index: ~~key,
-        value: diff[key].map(item => toSyncElement(item, [...path, key]))
+        value: diff[key].map(item => toSyncElement(item, [ ...path, key ]))
       }
     }).filter(Boolean).reduce((prev, curr) => {
-      return Array.isArray(curr) ? [...prev, ...curr] : [...prev, curr]
+      return Array.isArray(curr) ? [ ...prev, ...curr ] : [ ...prev, curr ]
     }, [])
   }
-  if(diff[2] === 2 && diff.length === 3) { // text of block
+  if (diff[2] === 2 && diff.length === 3) { // text of block
     const { diffs: textDelta, start1 } = DMP.patch_fromText(diff[0])[0]
     return textDelta.reduce((res, item) => {
       let index = 0
-      if(res.length === 0) {
-        index = start1 
+      if (res.length === 0) {
+        index = start1
       } else {
         const { length, action, index: _index } = res[res.length - 1]
         index = (action === 'retain' ? length : _index) + (item[0] === 0 ? item[1].length : 0)
       }
       // console.log(index, res);
-      return [...res, {
+      return [ ...res, {
         type: 'string',
         path,
         action: item[0] === 0 ? 'retain' : item[0] === 1 ? 'insert' : 'delete',
         index,
         value: item[1],
         length: res.length === 0 ? (start1 + item[1].length) : item[1].length
-      }]
+      } ]
     }, []).filter(item => item.action !== 'retain')
   }
-  if(diff.length === 1) { // add data
-    return [{
+  if (diff.length === 1) { // add data
+    return [ {
       type: 'object',
       path,
       action: 'replace',
       value: toSyncElement(diff[0], path)
-    }]
-  } 
-  if(diff.length === 3 && diff[2] === 0 && diff[1] === 0) { // delete data
-    return [{
+    } ]
+  }
+  if (diff.length === 3 && diff[2] === 0 && diff[1] === 0) { // delete data
+    return [ {
       type: 'object',
       path,
       action: 'delete'
-    }]
+    } ]
   }
-  return [{ // replace data
+  return [ { // replace data
     type: 'object',
     path,
     action: 'replace',
     value: toSyncElement(diff[1], path)
-  }]
+  } ]
 }
 
 export function toSyncElement(item, path = []) {
-  if(typeof item === 'string') {
+  if (typeof item === 'string') {
     const textElement = new Y.Text(item);
     return textElement;
   }
@@ -264,33 +271,32 @@ export function toSyncElement(item, path = []) {
   if (item && typeof item === 'object') {
     const mapElement = new Y.Map();
     Object.keys(item).forEach(key => {
-      mapElement.set(key, toSyncElement(item[key], [...path, key]));
+      mapElement.set(key, toSyncElement(item[key], [ ...path, key ]));
     });
     return mapElement;
   }
   // if(typeof item === 'number' && (path[path.length - 1] === 'offset' || path[path.length - 1] === 'length')) {
-    
+
   // }
   return item === void 0 ? '' : item;
 }
 
 export const getTargetByPath = (path, target, cb) => {
-  if(path.length === 0) return target
+  if (path.length === 0) return target
   return path.reduce((t, key, index) => {
-    if(!t) {
-      cb(key, index)
-      return t
+    if (!t) {
+      throw new Error(`Could not find RAW according to pathRaw ${path.join('.')}, please initialize the data first`)
     }
     const res = t.get(key)
-    !res && console.log(path, target,  key);
+    !res && console.log(path, target, key);
     return res
   }, target)
 }
 
 export const changeYmapByDelta = (delta, ymap, syncOpr) => {
-  if(!delta || delta.length === 0) return 
+  if (!delta || delta.length === 0) return
   const operations = getDeltaArray(delta, [])
-  if(operations.length === 0) return 
+  if (operations.length === 0) return
   const ydoc = ymap.doc
   // console.log(operations, delta);
   ydoc.transact(() => {
@@ -302,30 +308,30 @@ export const changeYmapByDelta = (delta, ymap, syncOpr) => {
 }
 const applyYDocOp = (opr, ymap) => {
   const { type, path, action, value, index, length } = opr
-  if(type === 'string') {
+  if (type === 'string') {
     const target = getTargetByPath(path, ymap)
     // console.log(target, path, index, value);
     return action === 'insert' ? target.insert(index, value) : target.delete(index, length)
   }
-  if(type === 'array') {
+  if (type === 'array') {
     const target = getTargetByPath(path, ymap)
-    if(action === 'insert') {
-      if(index === target.length) return target.push(value) // 最后一位是push方法
+    if (action === 'insert') {
+      if (index === target.length) return target.push(value) // 最后一位是push方法
       return target.insert(index, value)
     }
-    if(action === 'delete') {
+    if (action === 'delete') {
       return target.delete(index, length)
     }
-    if(action === 'move') {
+    if (action === 'move') {
       const moveToLast = +value === target.length - 1
       const item = target.get(index)
       target.delete(index, 1)
-      return moveToLast ? target.push([item]) : target.insert(value, [item])  // 最后一位是push方法
+      return moveToLast ? target.push([ item ]) : target.insert(value, [ item ]) // 最后一位是push方法
     }
   }
-  if(type === 'object') {
-    let index = path.length - 1
-    let target = getTargetByPath(path.slice(0, -1), ymap)
+  if (type === 'object') {
+    const index = path.length - 1
+    const target = getTargetByPath(path.slice(0, -1), ymap)
     // while(index < path.length && ymap.get[path[index]]) {
     //   target = ymap.get[path[index]]
     //   index++
@@ -334,12 +340,12 @@ const applyYDocOp = (opr, ymap) => {
     // if(index === path.length - 1) { // 遍历到底了,操作的就是最后的一个父元素
     //   target = target.parent
     //   index = index - 1
-      if(action === 'delete') {
-        return target.delete(path[index])
-      }
-      if(action === 'replace') {
-        return target.set(path[index], value)
-      }
+    if (action === 'delete') {
+      return target.delete(path[index])
+    }
+    if (action === 'replace') {
+      return target.set(path[index], value)
+    }
     // }
     // path没遍历到底，delete不需要处理了，replace需要补齐数据，防止undefined报错
     // if(action !== 'replace') return
