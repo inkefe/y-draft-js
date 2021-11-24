@@ -97,6 +97,7 @@ export class DraftBinding {
       this.editorState = editorState
       const raw = transRaw(convertToRaw(editorState.getCurrentContent()))
       if (!this.value) return (this.value = raw)
+      if(this.shouldAcceptSelection && !editorState.getSelection().isCollapsed()) this.shouldAcceptSelection = false // 释放控制
       const newJson = JSON.stringify(raw)
       const oldJson = JSON.stringify(this.value)
       if (oldJson === newJson) return // console.log(newJson, oldJson)
@@ -157,6 +158,7 @@ export class DraftBinding {
   bindEditor = (editor) => { // 支持异步绑定编辑器
     if (!editor) return
     this.editor = editor
+    this.getEditorContainer()?.addEventListener('click', this.releaseSelection)
     this._update = this.editor.update // listen to changes
     this._update && (this.editor.update = (...args) => {
       this.onChange.apply(this, args)
@@ -176,6 +178,11 @@ export class DraftBinding {
         this.muxSetRaw(this._waitUpdateTarget)
       }
     })
+  }
+
+  getEditorContainer = () => {
+    if(!this.editor) return null
+    return this.editor.editorContainer || this.editor.editor.editorContainer
   }
 
   // _onSelect = e => {
@@ -223,9 +230,14 @@ export class DraftBinding {
     const end = selectionState.getEndOffset();
     const newSelection = getNewSelection({ startKey, endKey, start, end }, raw, contentState)
     // this.localSelectionState = newSelection
-    this.editorState = EditorState[isCollapsed ? 'acceptSelection' : 'acceptSelection'](newEditorState, newSelection)
+    console.log(this.shouldAcceptSelection);
+    this.editorState = EditorState[isCollapsed || this.shouldAcceptSelection ? 'acceptSelection' : 'forceSelection'](newEditorState, newSelection)
     this.value = raw
     _onChange.call(this.editor, this.editorState);
+  }
+
+  releaseSelection = () => {
+    this.shouldAcceptSelection = true
   }
 
   decorations = new Map()
@@ -267,6 +279,7 @@ export class DraftBinding {
 
   destroy () {
     console.warn('y-darf-js is destoryed');
+    this.getEditorContainer()?.removeEventListener('mousedown', this.releaseSelection)
     this._update && this.editor && (this.editor.update = this._update)
     this._onChange && this.editor && (this.editor.onChange = this._onChange)
     // this._monacoChangeHandler.dispose()

@@ -357,3 +357,6 @@ const applyYDocOp = (opr, ymap) => {
   }
 }
 export { transRaw, getStringDiffArray, diffIndex, getNewSelection }
+
+// 解决draft-js跨行剪切报错
+Node.prototype.removeChild = tryCatchFunc(Node.prototype.removeChild)
