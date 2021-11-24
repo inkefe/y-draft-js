@@ -4,7 +4,7 @@ import * as Y from 'yjs'
 import { createMutex } from 'lib0/mutex.js'
 import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
 import { convertFromRaw, convertToRaw, EditorState, SelectionState } from 'draft-js';
-import { transRaw, getNewSelection, changeYmapByDelta, toRawSharedData, toSyncElement, getTargetByPath } from './utils'
+import { transRaw, getNewSelection, changeYmapByDelta, toSyncElement, getTargetByPath } from './utils'
 import { diffRaw, rbw2raw, raw2rbw } from './diff'
 
 const LOCAL_OPERATIONS = new WeakMap();
@@ -33,9 +33,9 @@ const CHANGE_CLIENT = 'CHANGE_CLIENT' // 用于识别是不是自己的更新
 window.Y = Y
 export class DraftBinding {
   constructor(opts) {
-    const { ymap, rawPath, editor, provider, parmas } = opts
+    const { ymap, rawPath: _rawPath, editor, provider, parmas } = opts
+    let rawPath = _rawPath
     !Array.isArray(rawPath) && (rawPath = [rawPath])
-    this.editor = editor
     this.doc = ymap.doc
     this.ymap = ymap
     this.awareness = provider.awareness
@@ -51,21 +51,12 @@ export class DraftBinding {
     // ymap.doc.on('afterTransaction', update => {
     //   console.log(update, 'afterTransaction');
     // })
-    provider.on("sync", (isSynced) => { // 判断本地操作的字段
+
+    provider.on("sync", (isSynced) => {
       if (!isSynced) return
       const rawYmap = getTargetByPath(this.rawPath,  ymap)
-      if(!rawYmap) return new Error(`Could not find RAW according to pathRaw ${pathRaw.join('.')}, please initialize the data first`)
-      this.rawYmap = rawYmap
-      if(rawYmap.get(CHANGE_CLIENT)) {
-        this.oprYText = rawYmap.get(CHANGE_CLIENT)
-        this.oprYText.delete(0, this.oprYText.length - 1)
-        this.oprID = this.oprYText.toString()
-      } else {
-        this.oprID = '0'
-        this.oprYText = toSyncElement(this.oprID)
-        rawYmap.set(CHANGE_CLIENT, toSyncElement(this.oprID))
-      }
-      rawYmap.observeDeep(this.onObserveDeep) // observeDeep this editor's raw
+      if(!rawYmap) return this.listenYmap(ymap) // new Error(`Could not find RAW according to pathRaw ${pathRaw.join('.')}, please initialize the data first`)
+      this.listenTargetYmap(rawYmap)
     })
     this.onObserveDeep = (event, isupate) => {
       let currentTarget = null
@@ -83,7 +74,6 @@ export class DraftBinding {
         this._waitUpdateTarget = currentTarget
       })
     }
-    console.log(ymap);
     
 
     // editor.onDidChangeCursorSelection(() => {
@@ -123,6 +113,44 @@ export class DraftBinding {
     }, () => {
       console.warn('DraftBinding onChange');
     })
+    this.bindEditor(editor)
+  }
+
+  forceRefresh = (target) => {
+    // console.log('forceRefresh');
+    const raw = getRawBySharedData(this.rawPath, target.parent)
+    this.setStateByRaw(raw)
+  }
+
+  listenYmap = (ymap) => {
+    ymap.observeDeep(this.outerMapObserveDeep)
+  }
+
+  outerMapObserveDeep = e => {
+    const rawYmap = getTargetByPath(this.rawPath,  ymap)
+    console.log('outerMapObserveDeep', rawYmap);
+    if(!rawYmap) return // 等待目标字段的内容出现
+    this.listenTargetYmap(rawYmap)
+    ymap.unobserveDeep(this.outerMapObserveDeep)
+  }
+
+  listenTargetYmap = (rawYmap) => {
+    this.rawYmap = rawYmap
+    if(rawYmap.get(CHANGE_CLIENT)) { // A tag used to record local actions to prevent executing `setStateByRaw()`
+      this.oprYText = rawYmap.get(CHANGE_CLIENT)
+      this.oprYText.delete(0, this.oprYText.length - 1)
+      this.oprID = this.oprYText.toString()
+    } else {
+      this.oprID = '0'
+      this.oprYText = toSyncElement(this.oprID)
+      rawYmap.set(CHANGE_CLIENT, toSyncElement(this.oprID))
+    }
+    rawYmap.observeDeep(this.onObserveDeep) // observeDeep this editor's raw
+  }
+
+  bindEditor = (editor) => { // 支持异步绑定编辑器
+    if (!editor) return
+    this.editor = editor
     this._update = this.editor.update // listen to changes
     this._update && (this.editor.update = (...args) => {
       this.onChange.apply(this, args)
@@ -137,19 +165,11 @@ export class DraftBinding {
       this.onChange.apply(this, args)
       this._onChange.apply(this.editor, args)
       if(this._waitUpdateTarget) {
-        console.log('_waitUpdateTarget');
         this.forceRefresh(this._waitUpdateTarget)
         this._waitUpdateTarget = null
       }
     })
   }
-
-  forceRefresh = (target) => {
-    console.log('forceRefresh');
-    const raw = getRawBySharedData(target.parent, this.rawPath)
-    this.setStateByRaw(raw)
-  }
-
 
   _onSelect = e => {
     const editorState = this.getEditorState()

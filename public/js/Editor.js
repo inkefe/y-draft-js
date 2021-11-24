@@ -58,6 +58,7 @@ export default function Editor () {
       } else {
         console.log('初始化');
         ymap.set(contenField, toRawSharedData(value || rawContent, ymap))
+        setValue(value || rawContent);
       }
     });
 

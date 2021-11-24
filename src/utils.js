@@ -282,7 +282,7 @@ export const getTargetByPath = (path, target, cb) => {
       return t
     }
     const res = t.get(key)
-    !res && console.log(target, path, key);
+    !res && console.log(path, target,  key);
     return res
   }, target)
 }
