@@ -1,6 +1,6 @@
 import Dmp from 'diff-match-patch';
-import { isEmpty, isEqual } from 'lodash';
-import { DiffPatcher } from './jsondiffpatch.esm.js';
+import { isEmpty } from 'lodash';
+import { DiffPatcher } from 'jsondiffpatch/dist/jsondiffpatch.umd';
 import { transRaw } from './utils';
 
 const diffPatcher = new DiffPatcher({
