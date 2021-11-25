@@ -25,9 +25,12 @@ export default defineConfig({
     },
   },
   build: {
-    rollupOptions: {
-      input: [],
+    lib: {
+      entry: path.resolve(__dirname, 'src/y-draft-js.js'),
+      name: 'y-draft-js',
     },
+    emptyOutDir: true,
+    outDir: path.resolve(__dirname, 'lib'),
   },
   optimizeDeps: {
     entries: [],

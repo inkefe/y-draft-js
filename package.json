@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Draft-js editor bindings for Yjs",
   "private": false,
+  "main": "lib/y-draft-js.es.js",
   "dependencies": {
     "@draft-js-plugins/editor": "^4.1.0",
     "@draft-js-plugins/inline-toolbar": "^4.1.2",
