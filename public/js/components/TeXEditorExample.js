@@ -264,14 +264,14 @@ class TeXEditorExample extends React.Component {
     const { isOnline } = this.props;
     return (
       <div className={`TexEditor-container ${isOnline ? '' : 'bgred'}`}>
-        <div className="TeXEditor-root">
-          <div className="TeXEditor-editor" onClick={this._focus}>
+        <div className='TeXEditor-root'>
+          <div className='TeXEditor-editor' onClick={this._focus}>
             <Editor
               blockRendererFn={this._blockRenderer}
               editorState={editorState}
               handleKeyCommand={this._handleKeyCommand}
               onChange={this._onChange}
-              placeholder="Start a document..."
+              placeholder='Start a document...'
               plugins={plugins}
               readOnly={liveTeXEdits.count()}
               ref={ref => (this.editorRef = ref)}
@@ -306,14 +306,14 @@ class TeXEditorExample extends React.Component {
             }
           </InlineToolbar>
         </div>
-        <button onClick={this.consoleRaw} className="TeXEditor-insert">
+        <button onClick={this.consoleRaw} className='TeXEditor-insert'>
           {'console raw'}
         </button>
 
-        <button onClick={this.toggleAction} className="remove-button">
+        <button onClick={this.toggleAction} className='remove-button'>
           {isRemove ? 'remove char' : 'insert char'}
         </button>
-        <button onClick={this.mockInsertText} className="insert-button">
+        <button onClick={this.mockInsertText} className='insert-button'>
           {isMock ? 'stop mock...' : 'mock input'}
         </button>
       </div>

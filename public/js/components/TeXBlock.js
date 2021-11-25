@@ -34,7 +34,7 @@ class KatexOutput extends React.Component {
   }
 
   render() {
-    return <div ref="container" onClick={this.props.onClick} />;
+    return <div ref='container' onClick={this.props.onClick} />;
   }
 }
 
@@ -135,14 +135,14 @@ export default class TeXBlock extends React.Component {
       }
 
       editPanel = (
-        <div className="TeXEditor-panel">
+        <div className='TeXEditor-panel'>
           <textarea
-            className="TeXEditor-texValue"
+            className='TeXEditor-texValue'
             onChange={this._onValueChange}
-            ref="textarea"
+            ref='textarea'
             value={this.state.texValue}
           />
-          <div className="TeXEditor-buttons">
+          <div className='TeXEditor-buttons'>
             <button
               className={buttonClass}
               disabled={this.state.invalidTeX}
@@ -150,7 +150,7 @@ export default class TeXBlock extends React.Component {
             >
               {this.state.invalidTeX ? 'Invalid TeX' : 'Done'}
             </button>
-            <button className="TeXEditor-removeButton" onClick={this._remove}>
+            <button className='TeXEditor-removeButton' onClick={this._remove}>
               Remove
             </button>
           </div>
