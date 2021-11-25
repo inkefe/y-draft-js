@@ -434,6 +434,7 @@ const applyYDocOp = (opr, ymap) => {
 export const onTargetSync = (path, ymap, cb) => {
   if (!ymap) return console.warn('ymap is undefined');
   if (!cb) return console.warn('callback is necessary in onTargetSync');
+  Array.isArray(path) || (path = [path]);
   const target = getTargetByPath(path, ymap);
   if (target) {
     cb(target);
