@@ -14,6 +14,10 @@
 @import '@draft-js-plugins/mention/lib/plugin.css';
 @import '@draft-js-plugins/inline-toolbar/lib/plugin.css';
 
+.bgred{
+  background-color: rgba(221, 52, 86, 0.2);
+}
+
 .headlineButtonWrapper {
   display: inline-block;
 }
@@ -46,7 +50,10 @@
   min-height: 40px;
   padding: 30px;
 }
-
+.TeXEditor-editor *{
+  caret-color: red;
+  color: #525252;
+}
 .TeXEditor-button {
   margin-top: 10px;
   text-align: center;
@@ -125,7 +132,7 @@
   color: #666;
 }
 
-.TeXEditor-insert, .insert-button {
+.TeXEditor-insert, .insert-button, .remove-button {
   background-color: #f1f1f1;
   border: 1px solid #ccc;
   border-radius: 3px;
@@ -139,4 +146,7 @@
 }
 .insert-button{
   bottom: 70px;
+}
+.remove-button{
+  bottom: 110px;
 }

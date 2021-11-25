@@ -72,5 +72,5 @@ export default function Editor () {
 
   const onChange = () => {
   }
-  return <TeXEditorExample ref={editorRef} onChange={onChange} defaultValue={value}/>
+  return <TeXEditorExample ref={editorRef} isOnline={isOnline} onChange={onChange} defaultValue={value}/>
 }

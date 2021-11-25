@@ -66,6 +66,7 @@ class TeXEditorExample extends React.Component {
       liveTeXEdits: Map(),
       open: false,
       isMock: false,
+      isRemove: false,
       suggestions: mentions
     };
 
@@ -138,7 +139,7 @@ class TeXEditorExample extends React.Component {
     const { isMock } = this.state
     this.setState({ isMock: !isMock })
     if(!isMock) {
-      this.timer = window.setInterval(this.autoInsertText, 100)
+      this.timer = window.setInterval(this.autoInsertText, 72)
     } else {
       window.clearInterval(this.timer)
       this.timer = null
@@ -146,6 +147,48 @@ class TeXEditorExample extends React.Component {
   }
 
   autoInsertText = () => {
+    const { editorState, isRemove } = this.state
+    if(isRemove) {
+      return this.autoRemoveText()
+    }
+    const content = editorState.getCurrentContent()
+    const blocks = content.getBlocksAsArray().map(block => ({
+      key: block.getKey(),
+      length: block.getLength(),
+    }))
+    const number = faker.datatype.number({
+      min: 0,
+      max: blocks.length - 1,
+    })
+    const anchorOffset = faker.datatype.number({
+      min: 0,
+      max: blocks[number].length - 1,
+    })
+    const isSpace = faker.datatype.number({
+      min: 0,
+      max: 8,
+    })
+    const randomChar = isSpace < 2 ? ' ' : String.fromCharCode(faker.datatype.number({
+      min: 32,
+      max: 126,
+    }))
+
+    const newContentState = Modifier.insertText(content, new SelectionState({
+      anchorKey: blocks[number].key,
+      focusKey: blocks[number].key,
+      anchorOffset,
+      focusOffset: anchorOffset,
+    }), randomChar === '`' ? '*' : randomChar)
+    this.editorRef.editor.update(EditorState.push(editorState, newContentState, 'insert-characters'))
+  }
+
+  toggleAction = () => {
+    const { isRemove } = this.state
+    this.setState({ isRemove: !isRemove })
+  }
+
+  autoRemoveText = () => {
+    
     const { editorState } = this.state
     const content = editorState.getCurrentContent()
     const blocks = content.getBlocksAsArray().map(block => ({
@@ -158,23 +201,18 @@ class TeXEditorExample extends React.Component {
     })
     const anchorOffset = faker.datatype.number({
       min: 0,
-      max: blocks[number].length,
+      max: blocks[number].length - 1,
     })
-    const randomChar = String.fromCharCode(faker.datatype.number({
-      min: 32,
-      max: 126,
-    }))
-    const isSpace = faker.datatype.number({
-      min: 0,
-      max: 8,
-    })
-    const newContentState = Modifier.insertText(content, new SelectionState({
+    if(content.getPlainText().replace(/\n/g, '').length === 0) {
+      this.mockInsertText()
+    }
+    const newContentState = Modifier.removeRange(content, new SelectionState({
       anchorKey: blocks[number].key,
       focusKey: blocks[number].key,
       anchorOffset,
-      focusOffset: anchorOffset,
-    }), isSpace < 2 ? ' ' : randomChar)
-    this.editorRef.editor.update(EditorState.push(editorState, newContentState, 'insert-characters'))
+      focusOffset: anchorOffset + 1,
+    }))
+    this.editorRef.editor.update(EditorState.push(editorState, newContentState, 'remove-characters'))
   }
 
   componentDidMount () {
@@ -206,9 +244,10 @@ class TeXEditorExample extends React.Component {
    */
   render() {
     const { MentionSuggestions, plugins } = this
-    const { editorState, liveTeXEdits, open, suggestions, isMock } = this.state;
+    const { editorState, liveTeXEdits, open, suggestions, isMock, isRemove } = this.state;
+    const { isOnline } = this.props
     return (
-      <div className="TexEditor-container">
+      <div className={`TexEditor-container ${isOnline ? '' : 'bgred'}`}>
         <div className="TeXEditor-root">
           <div className="TeXEditor-editor" onClick={this._focus}>
             <Editor
@@ -253,6 +292,10 @@ class TeXEditorExample extends React.Component {
         </div>
         <button onClick={this.consoleRaw} className="TeXEditor-insert">
           {'console raw'}
+        </button>
+
+        <button onClick={this.toggleAction} className="remove-button">
+          {isRemove ? 'remove char' : 'insert char'}
         </button>
         <button onClick={this.mockInsertText} className="insert-button">
           {isMock ? 'stop mock...' : 'mock input'}

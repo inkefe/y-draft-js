@@ -63,7 +63,7 @@ export class DraftBinding {
       event.forEach(item => {
         const { path } = item
         const originOrpId = item.currentTarget.get(CHANGE_CLIENT).toString()
-        if (path[0] !== CHANGE_CLIENT && this.oprID !== originOrpId) { // 自己的更改不用更新
+        if (path.length > 0 && path[0] !== CHANGE_CLIENT && this.oprID !== originOrpId) { // 自己的更改不用更新
           currentTarget = item.currentTarget
           this.oprID = originOrpId
         }
@@ -108,7 +108,7 @@ export class DraftBinding {
       })
       this.value = JSON.parse(newJson)
     }, () => {
-      console.warn('DraftBinding onChange');
+      console.warn('onChange has been delayed');
     })
     this.bindEditor(editor)
   }
@@ -119,11 +119,11 @@ export class DraftBinding {
   }
 
   muxSetRaw = (raw) => {
+    this._waitUpdateTarget = null
     this.mutex(() => {
       this.setStateByRaw(raw)
-      this._waitUpdateTarget = null
     }, () => {
-      console.warn('setStateByRaw');
+      console.warn('setStateByRaw has been delayed');
       this._waitUpdateTarget = raw
     })
   }
@@ -282,6 +282,7 @@ export class DraftBinding {
     this.getEditorContainer()?.removeEventListener('mousedown', this.releaseSelection)
     this._update && this.editor && (this.editor.update = this._update)
     this._onChange && this.editor && (this.editor.onChange = this._onChange)
+    this.mutex = null
     // this._monacoChangeHandler.dispose()
     this.rawYmap && this.rawYmap.unobserveDeep(this.onObserveDeep)
     // this.doc.off('beforeAllTransactions', this._beforeTransaction)
