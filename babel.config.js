@@ -1,13 +1,13 @@
-const removeLinariaImport = () => ({
-  name: 'remove-linaria-import',
-  visitor: {
-    ImportDeclaration(path) {
-      if (path.node.source && path.node.source.value === 'linaria') {
-        path.remove();
-      }
-    },
-  },
-});
+// const removeLinariaImport = () => ({
+//   name: 'remove-linaria-import',
+//   visitor: {
+//     ImportDeclaration(path) {
+//       if (path.node.source && path.node.source.value === 'linaria') {
+//         path.remove();
+//       }
+//     },
+//   },
+// });
 
 module.exports = {
   presets: [
@@ -17,6 +17,6 @@ module.exports = {
   ],
   plugins: [
     ['@babel/plugin-proposal-class-properties', { loose: true }],
-    removeLinariaImport,
+    // removeLinariaImport,
   ],
 };
