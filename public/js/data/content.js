@@ -24,7 +24,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -33,19 +33,18 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
-      text: (
+      text:
         'Each TeX block below is represented as a DraftEntity object and ' +
-        'rendered using Khan Academy\'s KaTeX library.'
-      ),
+        "rendered using Khan Academy's KaTeX library.",
       key: 'dda23',
       type: 'unstyled',
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -54,7 +53,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: 'Click any TeX block to edit.',
@@ -63,7 +62,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     // {
     //   text: ' ',
@@ -77,7 +76,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -86,7 +85,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -95,7 +94,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -104,7 +103,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -113,7 +112,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -122,7 +121,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -131,7 +130,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -140,7 +139,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
     {
       text: '',
@@ -149,7 +148,7 @@ export const rawContent = {
       depth: 0,
       inlineStyleRanges: [],
       entityRanges: [],
-      data: {}
+      data: {},
     },
   ],
 
@@ -168,19 +167,21 @@ export const rawContent = {
   },
 };
 // text转RAW, key为xxxx，没有@
-export const stringToRaw = (str) => {
-  const contentRaw = convertToRaw(createEditorStateWithText(str || '').getCurrentContent())
+export const stringToRaw = str => {
+  const contentRaw = convertToRaw(
+    createEditorStateWithText(str || '').getCurrentContent()
+  );
   return contentRaw;
-}
+};
 // 对方法进行封装，防止内部报错
 export const tryCatchFunc = (fn, msg) =>
-  function(...args) {
+  function (...args) {
     try {
-      return typeof fn === 'function' && fn.apply(this, args)
+      return typeof fn === 'function' && fn.apply(this, args);
     } catch (error) {
-      console.warn(msg || '方法报错', error)
+      console.warn(msg || '方法报错', error);
     }
-  }
+  };
 
 export const mentions = [
   {

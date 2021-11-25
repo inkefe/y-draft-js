@@ -2,3 +2,7 @@ build
 dist
 .prettierrc.json
 .husky
+*.min.js
+*.esm.js
+*.usm.js
+*-lock.json

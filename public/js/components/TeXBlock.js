@@ -12,18 +12,14 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-'use strict';
-
 import katex from 'katex';
 import React from 'react';
 
 class KatexOutput extends React.Component {
   _update() {
-    katex.render(
-      this.props.content,
-      this.refs.container,
-      {displayMode: true},
-    );
+    katex.render(this.props.content, this.refs.container, {
+      displayMode: true,
+    });
   }
 
   componentDidMount() {
@@ -45,24 +41,27 @@ class KatexOutput extends React.Component {
 export default class TeXBlock extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {editMode: false};
+    this.state = { editMode: false };
 
     this._onClick = () => {
       if (this.state.editMode) {
         return;
       }
 
-      this.setState({
-        editMode: true,
-        texValue: this._getValue(),
-      }, () => {
-        this._startEdit();
-      });
+      this.setState(
+        {
+          editMode: true,
+          texValue: this._getValue(),
+        },
+        () => {
+          this._startEdit();
+        }
+      );
     };
 
     this._onValueChange = evt => {
-      var value = evt.target.value;
-      var invalid = false;
+      const value = evt.target.value;
+      let invalid = false;
       try {
         katex.__parse(value);
       } catch (e) {
@@ -76,16 +75,19 @@ export default class TeXBlock extends React.Component {
     };
 
     this._save = () => {
-      var entityKey = this.props.block.getEntityAt(0);
-      var newContentState = this.props.contentState.mergeEntityData(
+      const entityKey = this.props.block.getEntityAt(0);
+      const newContentState = this.props.contentState.mergeEntityData(
         entityKey,
-        {content: this.state.texValue},
+        { content: this.state.texValue }
       );
-      this.setState({
-        invalidTeX: false,
-        editMode: false,
-        texValue: null,
-      }, this._finishEdit.bind(this, newContentState));
+      this.setState(
+        {
+          invalidTeX: false,
+          editMode: false,
+          texValue: null,
+        },
+        this._finishEdit.bind(this, newContentState)
+      );
     };
 
     this._remove = () => {
@@ -94,10 +96,10 @@ export default class TeXBlock extends React.Component {
     this._startEdit = () => {
       this.props.blockProps.onStartEdit(this.props.block.getKey());
     };
-    this._finishEdit = (newContentState) => {
+    this._finishEdit = newContentState => {
       this.props.blockProps.onFinishEdit(
         this.props.block.getKey(),
-        newContentState,
+        newContentState
       );
     };
   }
@@ -105,11 +107,11 @@ export default class TeXBlock extends React.Component {
   _getValue() {
     return this.props.contentState
       .getEntity(this.props.block.getEntityAt(0))
-      .getData()['content'];
+      .getData().content;
   }
 
   render() {
-    var texContent = null;
+    let texContent = null;
     if (this.state.editMode) {
       if (this.state.invalidTeX) {
         texContent = '';
@@ -120,19 +122,19 @@ export default class TeXBlock extends React.Component {
       texContent = this._getValue();
     }
 
-    var className = 'TeXEditor-tex';
+    let className = 'TeXEditor-tex';
     if (this.state.editMode) {
       className += ' TeXEditor-activeTeX';
     }
 
-    var editPanel = null;
+    let editPanel = null;
     if (this.state.editMode) {
-      var buttonClass = 'TeXEditor-saveButton';
+      let buttonClass = 'TeXEditor-saveButton';
       if (this.state.invalidTeX) {
         buttonClass += ' TeXEditor-invalidButton';
       }
 
-      editPanel =
+      editPanel = (
         <div className="TeXEditor-panel">
           <textarea
             className="TeXEditor-texValue"
@@ -144,14 +146,16 @@ export default class TeXBlock extends React.Component {
             <button
               className={buttonClass}
               disabled={this.state.invalidTeX}
-              onClick={this._save}>
+              onClick={this._save}
+            >
               {this.state.invalidTeX ? 'Invalid TeX' : 'Done'}
             </button>
             <button className="TeXEditor-removeButton" onClick={this._remove}>
               Remove
             </button>
           </div>
-        </div>;
+        </div>
+      );
     }
 
     return (

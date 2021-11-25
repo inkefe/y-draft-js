@@ -12,10 +12,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-'use strict';
-
 import Draft, { Modifier, SelectionState } from 'draft-js';
-import {Map} from 'immutable';
+import { Map } from 'immutable';
 import React from 'react';
 import faker from 'faker';
 import Editor, { createEditorStateWithText } from '@draft-js-plugins/editor';
@@ -37,24 +35,23 @@ import {
   CodeBlockButton,
 } from '@draft-js-plugins/buttons';
 import TeXBlock from './TeXBlock';
-import {insertTeXBlock} from '../modifiers/insertTeXBlock';
-import {removeTeXBlock} from '../modifiers/removeTeXBlock';
+import { removeTeXBlock } from '../modifiers/removeTeXBlock';
 import { mentions } from '../data/content';
-const { EditorState, RichUtils, convertToRaw, convertFromRaw} = Draft;
+const { EditorState, RichUtils, convertToRaw, convertFromRaw } = Draft;
 
-const valueToEditorState = (value) => {
-  let editorState = null
-  value = value || ''
+const valueToEditorState = value => {
+  let editorState = null;
+  value = value || '';
   if (typeof value === 'string') {
-    editorState = createEditorStateWithText(value)
+    editorState = createEditorStateWithText(value);
   } else {
-    if (typeof value !== 'object' || !Array.isArray(value.blocks)) return
+    if (typeof value !== 'object' || !Array.isArray(value.blocks)) return;
     else {
-      editorState = EditorState.createWithContent(convertFromRaw(value))
+      editorState = EditorState.createWithContent(convertFromRaw(value));
     }
   }
   return editorState || EditorState.createEmpty();
-}
+};
 
 const inlineToolbarPlugin = createInlineToolbarPlugin();
 const { InlineToolbar } = inlineToolbarPlugin;
@@ -67,35 +64,35 @@ class TeXEditorExample extends React.Component {
       open: false,
       isMock: false,
       isRemove: false,
-      suggestions: mentions
+      suggestions: mentions,
     };
 
     const mentionPlugin = createMentionPlugin();
     // eslint-disable-next-line no-shadow
     const { MentionSuggestions } = mentionPlugin;
     // eslint-disable-next-line no-shadow
-    const plugins = [ mentionPlugin, inlineToolbarPlugin];
+    const plugins = [mentionPlugin, inlineToolbarPlugin];
     this.plugins = plugins;
     this.MentionSuggestions = MentionSuggestions;
 
-    this._blockRenderer = (block) => {
+    this._blockRenderer = block => {
       if (block.getType() === 'atomic') {
         return {
           component: TeXBlock,
           editable: false,
           props: {
-            onStartEdit: (blockKey) => {
-              var {liveTeXEdits} = this.state;
-              this.setState({liveTeXEdits: liveTeXEdits.set(blockKey, true)});
+            onStartEdit: blockKey => {
+              const { liveTeXEdits } = this.state;
+              this.setState({ liveTeXEdits: liveTeXEdits.set(blockKey, true) });
             },
             onFinishEdit: (blockKey, newContentState) => {
-              var {liveTeXEdits} = this.state;
+              const { liveTeXEdits } = this.state;
               this.setState({
                 liveTeXEdits: liveTeXEdits.remove(blockKey),
-                editorState:EditorState.createWithContent(newContentState),
+                editorState: EditorState.createWithContent(newContentState),
               });
             },
-            onRemove: (blockKey) => this._removeTeX(blockKey),
+            onRemove: blockKey => this._removeTeX(blockKey),
           },
         };
       }
@@ -103,14 +100,14 @@ class TeXEditorExample extends React.Component {
     };
 
     this._focus = () => this.editorRef.focus();
-    this._onChange = (editorState) => {
-      this.setState({editorState})
-      const { onChange } = this.props
-      onChange && onChange(editorState)
+    this._onChange = editorState => {
+      this.setState({ editorState });
+      const { onChange } = this.props;
+      onChange && onChange(editorState);
     };
 
     this._handleKeyCommand = (command, editorState) => {
-      var newState = RichUtils.handleKeyCommand(editorState, command);
+      const newState = RichUtils.handleKeyCommand(editorState, command);
       if (newState) {
         this._onChange(newState);
         return true;
@@ -118,8 +115,8 @@ class TeXEditorExample extends React.Component {
       return false;
     };
 
-    this._removeTeX = (blockKey) => {
-      var {editorState, liveTeXEdits} = this.state;
+    this._removeTeX = blockKey => {
+      const { editorState, liveTeXEdits } = this.state;
       this.setState({
         liveTeXEdits: liveTeXEdits.remove(blockKey),
         editorState: removeTeXBlock(editorState, blockKey),
@@ -136,116 +133,135 @@ class TeXEditorExample extends React.Component {
   }
 
   mockInsertText = () => {
-    const { isMock } = this.state
-    this.setState({ isMock: !isMock })
-    if(!isMock) {
-      this.timer = window.setInterval(this.autoInsertText, 72)
+    const { isMock } = this.state;
+    this.setState({ isMock: !isMock });
+    if (!isMock) {
+      this.timer = window.setInterval(this.autoInsertText, 72);
     } else {
-      window.clearInterval(this.timer)
-      this.timer = null
+      window.clearInterval(this.timer);
+      this.timer = null;
     }
-  }
+  };
 
   autoInsertText = () => {
-    const { editorState, isRemove } = this.state
-    if(isRemove) {
-      return this.autoRemoveText()
+    const { editorState, isRemove } = this.state;
+    if (isRemove) {
+      return this.autoRemoveText();
     }
-    const content = editorState.getCurrentContent()
+    const content = editorState.getCurrentContent();
     const blocks = content.getBlocksAsArray().map(block => ({
       key: block.getKey(),
       length: block.getLength(),
-    }))
+    }));
     const number = faker.datatype.number({
       min: 0,
       max: blocks.length - 1,
-    })
+    });
     const anchorOffset = faker.datatype.number({
       min: 0,
       max: blocks[number].length - 1,
-    })
+    });
     const isSpace = faker.datatype.number({
       min: 0,
       max: 8,
-    })
-    const randomChar = isSpace < 2 ? ' ' : String.fromCharCode(faker.datatype.number({
-      min: 32,
-      max: 126,
-    }))
+    });
+    const randomChar =
+      isSpace < 2
+        ? ' '
+        : String.fromCharCode(
+            faker.datatype.number({
+              min: 32,
+              max: 126,
+            })
+          );
 
-    const newContentState = Modifier.insertText(content, new SelectionState({
-      anchorKey: blocks[number].key,
-      focusKey: blocks[number].key,
-      anchorOffset,
-      focusOffset: anchorOffset,
-    }), randomChar === '`' ? '*' : randomChar)
-    this.editorRef.editor.update(EditorState.push(editorState, newContentState, 'insert-characters'))
-  }
+    const newContentState = Modifier.insertText(
+      content,
+      new SelectionState({
+        anchorKey: blocks[number].key,
+        focusKey: blocks[number].key,
+        anchorOffset,
+        focusOffset: anchorOffset,
+      }),
+      randomChar === '`' ? '*' : randomChar
+    );
+    this.editorRef.editor.update(
+      EditorState.push(editorState, newContentState, 'insert-characters')
+    );
+  };
 
   toggleAction = () => {
-    const { isRemove } = this.state
-    this.setState({ isRemove: !isRemove })
-  }
+    const { isRemove } = this.state;
+    this.setState({ isRemove: !isRemove });
+  };
 
   autoRemoveText = () => {
-    
-    const { editorState } = this.state
-    const content = editorState.getCurrentContent()
+    const { editorState } = this.state;
+    const content = editorState.getCurrentContent();
     const blocks = content.getBlocksAsArray().map(block => ({
       key: block.getKey(),
       length: block.getLength(),
-    }))
+    }));
     const number = faker.datatype.number({
       min: 0,
       max: blocks.length - 1,
-    })
+    });
     const anchorOffset = faker.datatype.number({
       min: 0,
       max: blocks[number].length - 1,
-    })
-    if(content.getPlainText().replace(/\n/g, '').length === 0) {
-      this.mockInsertText()
+    });
+    if (content.getPlainText().replace(/\n/g, '').length === 0) {
+      this.mockInsertText();
     }
-    const newContentState = Modifier.removeRange(content, new SelectionState({
-      anchorKey: blocks[number].key,
-      focusKey: blocks[number].key,
-      anchorOffset,
-      focusOffset: anchorOffset + 1,
-    }))
-    this.editorRef.editor.update(EditorState.push(editorState, newContentState, 'remove-characters'))
-  }
+    const newContentState = Modifier.removeRange(
+      content,
+      new SelectionState({
+        anchorKey: blocks[number].key,
+        focusKey: blocks[number].key,
+        anchorOffset,
+        focusOffset: anchorOffset + 1,
+      })
+    );
+    this.editorRef.editor.update(
+      EditorState.push(editorState, newContentState, 'remove-characters')
+    );
+  };
 
-  componentDidMount () {
-    this.props.onRef && (this.props.onRef.current = this.editorRef)
+  componentDidMount() {
+    this.props.onRef && (this.props.onRef.current = this.editorRef);
   }
 
   componentDidUpdate(prevProps, prevState) {
-    const newJson = JSON.stringify(this.props.defaultValue)
-    const oldJson = JSON.stringify(prevProps.defaultValue)
+    const newJson = JSON.stringify(this.props.defaultValue);
+    const oldJson = JSON.stringify(prevProps.defaultValue);
     // console.log('componentDidUpdate', newJson === oldJson);
     if (newJson !== oldJson) {
       setTimeout(() => {
-        this._onChange(EditorState.createWithContent(convertFromRaw(this.props.defaultValue)))
-      }, 0)
+        this._onChange(
+          EditorState.createWithContent(convertFromRaw(this.props.defaultValue))
+        );
+      }, 0);
     }
   }
 
-  onOpenChange = (open) => this.setState({open});
+  onOpenChange = open => this.setState({ open });
 
-  onSearchChange = (value) => {
-    if(!value.value) return this.onOpenChange(false)
+  onSearchChange = value => {
+    if (!value.value) return this.onOpenChange(false);
     this.setState({
       suggestions: defaultSuggestionsFilter(value, mentions),
-    })
-  }
+    });
+  };
+
   /**
    * While editing TeX, set the Draft editor to read-only. This allows us to
    * have a textarea within the DOM.
    */
   render() {
-    const { MentionSuggestions, plugins } = this
-    const { editorState, liveTeXEdits, open, suggestions, isMock, isRemove } = this.state;
-    const { isOnline } = this.props
+    const { MentionSuggestions, plugins } = this;
+    const { editorState, liveTeXEdits, open, suggestions, isMock, isRemove } =
+      this.state;
+    const { isOnline } = this.props;
     return (
       <div className={`TexEditor-container ${isOnline ? '' : 'bgred'}`}>
         <div className="TeXEditor-root">
@@ -258,22 +274,22 @@ class TeXEditorExample extends React.Component {
               placeholder="Start a document..."
               plugins={plugins}
               readOnly={liveTeXEdits.count()}
-              ref={(ref) => (this.editorRef = ref)}
+              ref={ref => (this.editorRef = ref)}
             />
           </div>
           <MentionSuggestions
-              open={open}
-              onOpenChange={this.onOpenChange}
-              suggestions={suggestions}
-              onSearchChange={this.onSearchChange}
-              onAddMention={() => {
-                // get the mention object selected
-              }}
-            />
-           <InlineToolbar>
+            open={open}
+            onOpenChange={this.onOpenChange}
+            suggestions={suggestions}
+            onSearchChange={this.onSearchChange}
+            onAddMention={() => {
+              // get the mention object selected
+            }}
+          />
+          <InlineToolbar>
             {
               // may be use React.Fragment instead of div to improve perfomance after React 16
-              (externalProps) => (
+              externalProps => (
                 <div>
                   <BoldButton {...externalProps} />
                   <ItalicButton {...externalProps} />
@@ -304,5 +320,7 @@ class TeXEditorExample extends React.Component {
     );
   }
 }
-export default React.forwardRef((props, ref) => <TeXEditorExample {...props} onRef={ref}/>)
+export default React.forwardRef((props, ref) => (
+  <TeXEditorExample {...props} onRef={ref} />
+));
 // export default TeXEditorExample

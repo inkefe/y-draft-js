@@ -12,14 +12,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-'use strict';
-
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Editor from './Editor';
 
-
-ReactDOM.render(
-  <Editor/>,
-  document.getElementById('target'),
-);
+ReactDOM.render(<Editor />, document.getElementById('target'));

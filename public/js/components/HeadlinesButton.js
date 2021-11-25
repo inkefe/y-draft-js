@@ -38,7 +38,7 @@ export default class HeadlinesButton extends Component {
   // When using a click event inside overridden content, mouse down
   // events needs to be prevented so the focus stays in the editor
   // and the toolbar remains visible  onMouseDown = (event) => event.preventDefault()
-  onMouseDown = (event) => event.preventDefault();
+  onMouseDown = event => event.preventDefault();
 
   onClick = () =>
     // A button can call `onOverrideContent` to replace the content
@@ -48,10 +48,7 @@ export default class HeadlinesButton extends Component {
 
   render() {
     return (
-      <div
-        onMouseDown={this.onMouseDown}
-        className={'headlineButtonWrapper'}
-      >
+      <div onMouseDown={this.onMouseDown} className={'headlineButtonWrapper'}>
         <button onClick={this.onClick} className={'headlineButton'}>
           H
         </button>

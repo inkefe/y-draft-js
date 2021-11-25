@@ -16,36 +16,43 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   <head>
     <meta charset="utf-8" />
     <title>Draft • TeX</title>
-    <link rel="shortcut icon" type="image/x-icon" href="//static.inke.cn/s/images/favicon.ico">
+    <link
+      rel="shortcut icon"
+      type="image/x-icon"
+      href="//static.inke.cn/s/images/favicon.ico"
+    />
     <link rel="stylesheet" href="TeXEditor.css" />
     <link rel="stylesheet" href="./Draft.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.3.0/katex.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.3.0/katex.min.css"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/es6-shim/0.34.4/es6-shim.min.js"></script>
     <script>
       window.global = window;
     </script>
-    
+
     <style>
       .yRemoteSelection {
-          background-color: rgb(250, 129, 0, .5)
+        background-color: rgb(250, 129, 0, 0.5);
       }
       .yRemoteSelectionHead {
-          position: absolute;
-          border-left: orange solid 2px;
-          border-top: orange solid 2px;
-          border-bottom: orange solid 2px;
-          height: 100%;
-          box-sizing: border-box;
+        position: absolute;
+        border-left: orange solid 2px;
+        border-top: orange solid 2px;
+        border-bottom: orange solid 2px;
+        height: 100%;
+        box-sizing: border-box;
       }
       .yRemoteSelectionHead::after {
-          position: absolute;
-          content: ' ';
-          border: 3px solid orange;
-          border-radius: 4px;
-          left: -4px;
-          top: -5px;
+        position: absolute;
+        content: ' ';
+        border: 3px solid orange;
+        border-radius: 4px;
+        left: -4px;
+        top: -5px;
       }
-  </style>
+    </style>
   </head>
   <body>
     <div id="target"></div>
