@@ -1,6 +1,18 @@
 import * as Y from 'yjs';
 import Dmp from 'diff-match-patch';
 import { SelectionState } from 'draft-js';
+import { raw2rbw } from './diff';
+
+// 类数组对象转数组的方法
+export function objToArray(obj) {
+  if (!obj) return [];
+  const length =
+    Math.max.apply(
+      null,
+      Object.keys(obj).filter(key => key.match(/^\d+$/))
+    ) + 1;
+  return Array.from({ ...obj, length }).filter(Boolean);
+}
 
 const transRaw = raw => {
   if (!raw) return raw;
@@ -63,6 +75,7 @@ const getNewSelection = (
   const newParmas = { hasFocus: true };
   const isCollapsed = startKey === endKey && start === end;
   const { blocks } = raw;
+  if (blocks.length === 0) return;
   const editorText = rawToText(raw);
   const oldEditorText = contentState.getPlainText();
   const textDiff = getStringDiffArray(oldEditorText, editorText);
@@ -222,7 +235,7 @@ const getOperationByDiff = (diff, path) => {
   if (diff._t === 'a') {
     // array
     return Object.keys(diff)
-      .reverse()
+      .sort((a, b) => ~~a.replace(/^_/, '-') - b.replace(/^_/, '-'))
       .map(key => {
         if (key === '_t') return null;
         const res = {
@@ -236,7 +249,7 @@ const getOperationByDiff = (diff, path) => {
                 // move
                 ...res,
                 action: 'move',
-                index: ~~key.substr(1),
+                index: ~~key.substr(1), // 原index
                 value: diff[key][1], // new index
               }
             : {
@@ -253,7 +266,7 @@ const getOperationByDiff = (diff, path) => {
           ...res,
           action: 'insert',
           index: ~~key,
-          value: diff[key].map(item => toSyncElement(item, [...path, key])),
+          value: diff[key].map(item => toSyncElement(item)),
         };
       })
       .filter(Boolean)
@@ -298,7 +311,7 @@ const getOperationByDiff = (diff, path) => {
         type: 'object',
         path,
         action: 'replace',
-        value: toSyncElement(diff[0], path),
+        value: toSyncElement(diff[0]),
       },
     ];
   }
@@ -318,19 +331,29 @@ const getOperationByDiff = (diff, path) => {
       type: 'object',
       path,
       action: 'replace',
-      value: toSyncElement(diff[1], path),
+      value: toSyncElement(diff[1]),
     },
   ];
 };
-
-export function toSyncElement(item, path = []) {
+/**
+ * Converts all elements int a Draft content to SyncElements and adds them
+ * to the SharedType
+ *
+ * @param sharedType
+ * @param raw
+ */
+export function toRawSharedData(raw) {
+  const rbw = raw2rbw(raw);
+  return toSyncElement(rbw);
+}
+export function toSyncElement(item) {
   if (typeof item === 'string') {
     const textElement = new Y.Text(item);
     return textElement;
   }
 
   if (Array.isArray(item)) {
-    const childElements = item.map(item => toSyncElement(item, path));
+    const childElements = item.map(item => toSyncElement(item));
     const arrayElement = new Y.Array();
     arrayElement.insert(0, childElements);
     return arrayElement;
@@ -338,51 +361,51 @@ export function toSyncElement(item, path = []) {
 
   if (item && typeof item === 'object') {
     const mapElement = new Y.Map();
+    const isRaw = item.blocks && item.entityMap && !item.entityPool;
+    if (isRaw) return toRawSharedData(item);
     Object.keys(item).forEach(key => {
-      mapElement.set(key, toSyncElement(item[key], [...path, key]));
+      mapElement.set(key, toSyncElement(item[key]));
     });
     return mapElement;
   }
-  // if(typeof item === 'number' && (path[path.length - 1] === 'offset' || path[path.length - 1] === 'length')) {
-
-  // }
   return item === void 0 ? '' : item;
 }
 
-export const getTargetByPath = (path, target, cb) => {
+export const getTargetByPath = (path, target, isSync) => {
   if (path.length === 0) return target;
   return path.reduce((t, key, index) => {
     if (!t) {
-      return console.warn(
-        `Could not find target according to path ${path.join(
-          '.'
-        )}, it is recommended that you use 'onTargetSync' to listen for the value of the path`
-      );
+      !isSync &&
+        console.warn(
+          `Could not find target according to path [${path.join(
+            '.'
+          )}], it is recommended that you use 'onTargetSync' to listen for the value of the path`
+        );
+      return t;
     }
     const res = t.get(key);
-    !res && console.log(path, target, key);
     return res;
   }, target);
 };
-
+window.Y = Y;
 export const changeYmapByDelta = (delta, ymap, syncOpr) => {
   if (!delta || delta.length === 0) return;
   const operations = getDeltaArray(delta, []);
   if (operations.length === 0) return;
   const ydoc = ymap.doc;
-  // console.log(operations, delta);
+  console.log(operations, delta, ymap);
   ydoc.transact(() => {
     operations.forEach(opr => {
       applyYDocOp(opr, ymap);
     });
-    syncOpr && syncOpr.apply && syncOpr(ymap);
+    if (syncOpr && syncOpr.apply) syncOpr(ymap);
   });
 };
 const applyYDocOp = (opr, ymap) => {
   const { type, path, action, value, index, length } = opr;
   if (type === 'string') {
     const target = getTargetByPath(path, ymap);
-    // console.log(target, path, index, value);
+    console.log(target, path, index, value);
     return action === 'insert'
       ? target.insert(index, value)
       : target.delete(index, length);
@@ -398,7 +421,7 @@ const applyYDocOp = (opr, ymap) => {
     }
     if (action === 'move') {
       const moveToLast = +value === target.length - 1;
-      const item = target.get(index);
+      const item = target.get(index).clone();
       target.delete(index, 1);
       return moveToLast ? target.push([item]) : target.insert(value, [item]); // 最后一位是push方法
     }
@@ -435,19 +458,21 @@ export const onTargetSync = (path, ymap, cb) => {
   if (!ymap) return console.warn('ymap is undefined');
   if (!cb) return console.warn('callback is necessary in onTargetSync');
   Array.isArray(path) || (path = [path]);
-  const target = getTargetByPath(path, ymap);
+  const target = getTargetByPath(path, ymap, true);
   if (target) {
     cb(target);
     return;
   }
-  function ob() {
-    const target = getTargetByPath(path, ymap);
+  function ob(e) {
+    const target = getTargetByPath(path, e.currentTargt, true);
     if (!target) return; // 等待目标字段的内容出现
     cb(target);
-    ymap.unobserveDeep(ob);
+    console.log('unobse--------------rveDeep');
+    e.currentTargt.unobserveDeep(ob);
   }
   ymap.observeDeep(ob);
   return () => {
+    console.log('cancel');
     ymap.unobserveDeep(ob);
   };
 };

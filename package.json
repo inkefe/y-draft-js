@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Draft-js editor bindings for Yjs",
   "private": false,
-  "main": "lib/index.esm.js",
+  "main": "./lib/index.cjs.js",
+  "module": "./lib/index.esm.js",
   "files": [
     "lib"
   ],

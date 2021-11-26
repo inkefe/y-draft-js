@@ -2,12 +2,7 @@
 // import invariant from 'tiny-invariant';
 import { createMutex } from 'lib0/mutex.js';
 // import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
-import {
-  convertFromRaw,
-  convertToRaw,
-  EditorState,
-  SelectionState,
-} from 'draft-js';
+import { convertFromRaw, convertToRaw, EditorState } from 'draft-js';
 import {
   transRaw,
   getNewSelection,
@@ -15,8 +10,9 @@ import {
   toSyncElement,
   getTargetByPath,
   onTargetSync,
+  toRawSharedData,
 } from './utils';
-import { diffRaw, rbw2raw, raw2rbw } from './diff';
+import { diffRaw, rbw2raw } from './diff';
 
 const LOCAL_OPERATIONS = new WeakMap();
 const getRawBySharedData = (rawPath, ymap) => {
@@ -30,20 +26,18 @@ const getRawBySharedData = (rawPath, ymap) => {
   } // 修复
   return raw;
 };
-/**
- * Converts all elements int a Draft content to SyncElements and adds them
- * to the SharedType
- *
- * @param sharedType
- * @param raw
- */
-function toRawSharedData(raw) {
-  const rbw = raw2rbw(raw);
-  return toSyncElement(rbw);
-}
-export { toRawSharedData, getRawBySharedData, getTargetByPath, onTargetSync };
-const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
 
+export {
+  toRawSharedData,
+  getRawBySharedData,
+  getTargetByPath,
+  onTargetSync,
+  toSyncElement,
+  getNewSelection,
+};
+const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
+window.getRawByState = editorState =>
+  convertToRaw(editorState.getCurrentContent());
 export class DraftBinding {
   constructor(opts) {
     const { ymap, rawPath: _rawPath, editor, provider, parmas } = opts;
@@ -54,14 +48,14 @@ export class DraftBinding {
     this.awareness = provider.awareness;
     this.mutex = createMutex();
     this.rawPath = rawPath;
-    console.log(
-      'DraftBinding',
-      opts,
+    // console.log(
+    //   'DraftBinding',
+    //   opts,
 
-      getTargetByPath(this.rawPath, ymap),
-      editor,
-      provider
-    );
+    //   getTargetByPath(this.rawPath, ymap),
+    //   editor,
+    //   provider
+    // );
     // editor._onSelect = e => {
     //   editor._onSelect(e)
     //   this._onSelect(e)
@@ -72,12 +66,6 @@ export class DraftBinding {
     //   console.log(update, 'afterTransaction');
     // })
 
-    provider.on('sync', isSynced => {
-      if (!isSynced) return;
-      this.cancel = onTargetSync(this.rawPath, ymap, rawYmap => {
-        this.listenTargetYmap(rawYmap);
-      });
-    });
     this.onObserveDeep = (event, isupate) => {
       let currentTarget = null;
       event.forEach(item => {
@@ -96,6 +84,16 @@ export class DraftBinding {
       currentTarget && this.forceRefresh(currentTarget);
     };
 
+    !provider.synced
+      ? provider.on('sync', isSynced => {
+          if (!isSynced) return;
+          this.cancel = onTargetSync(this.rawPath, ymap, rawYmap => {
+            this.listenTargetYmap(rawYmap);
+          });
+        })
+      : (this.cancel = onTargetSync(this.rawPath, ymap, rawYmap => {
+          this.listenTargetYmap(rawYmap);
+        }));
     // editor.onDidChangeCursorSelection(() => {
     //   if (editor.getModel() === monacoModel) {
     //     const sel = editor.getSelection()
@@ -132,16 +130,12 @@ export class DraftBinding {
           } // 释放控制
           const newJson = JSON.stringify(raw);
           const oldJson = JSON.stringify(this.value);
-          if (oldJson === newJson) return; // console.log(newJson, oldJson)
+          if (oldJson === newJson || !this.rawYmap) return; // console.log(newJson, oldJson)
           const delta = diffRaw(this.value, raw);
-          changeYmapByDelta(
-            delta,
-            getTargetByPath(this.rawPath, this.ymap),
-            ymap => {
-              this.oprID = this.oprID + '0';
-              this.oprYText.insert(this.oprID.length, '0');
-            }
-          );
+          changeYmapByDelta(delta, this.rawYmap, () => {
+            this.oprID = this.oprID + '0';
+            this.oprYText.insert(this.oprID.length, '0');
+          });
           this.value = JSON.parse(newJson);
         },
         () => {
@@ -151,8 +145,8 @@ export class DraftBinding {
     this.bindEditor(editor);
   }
 
-  forceRefresh = target => {
-    const raw = getRawBySharedData(this.rawPath, target.parent);
+  forceRefresh = () => {
+    const raw = rbw2raw(this.rawYmap.toJSON());
     this.muxSetRaw(raw);
   };
 
@@ -182,40 +176,69 @@ export class DraftBinding {
       rawYmap.set(CHANGE_CLIENT, toSyncElement(this.oprID));
     }
     this.value = rbw2raw(rawYmap.toJSON());
-    rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
+    this.onObserveDeep && rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
   };
 
   bindEditor = editor => {
     // 支持异步绑定编辑器
-    if (!editor) return;
-    this.editor = editor;
-    this.getEditorContainer()?.addEventListener('click', this.releaseSelection);
-    this._update = this.editor.update; // listen to changes
-    this._update &&
-      (this.editor.update = (...args) => {
-        this.onChange.apply(this, args);
-        this._update.apply(this.editor, args);
-        if (this._waitUpdateTarget) {
-          this.editorState = args[0];
-          this.muxSetRaw(this._waitUpdateTarget);
+    if (!editor || this.draftEditor) return;
+    const draftEditor = editor.update ? editor : editor.editor;
+    if (!draftEditor || !editor.componentDidUpdate)
+      return console.warn('editor must be Draft ref');
+    const isPluginEditor = !!editor.onChange;
+    this.draftEditor = editor;
+    this.getEditorContainer()?.addEventListener(
+      'mousedown',
+      this.releaseSelection
+    );
+    if (isPluginEditor) {
+      this._onChange = editor.onChange;
+      const componentDidUpdate = editor.componentDidUpdate; // listen to changes
+      const that = this;
+      editor.componentDidUpdate = function (prevProps, prevState) {
+        const editorState = editor.getEditorState();
+        if (
+          that.editorState !== editorState &&
+          editorState !== prevProps.editorState
+        ) {
+          that.onChange(editorState);
+          if (that._waitUpdateTarget) {
+            that.muxSetRaw(that._waitUpdateTarget);
+          }
         }
-      });
-    if (this._update) return;
-    this._onChange = this.editor.onChange;
-    this._onChange &&
-      (this.editor.onChange = (...args) => {
-        this.onChange.apply(this, args);
-        this._onChange.apply(this.editor, args);
-        if (this._waitUpdateTarget) {
-          this.editorState = args[0];
-          this.muxSetRaw(this._waitUpdateTarget);
-        }
-      });
+        componentDidUpdate.apply(editor, [prevProps, prevState]);
+      };
+      // this._onChange = editor.onChange; // listen to changes
+      // this._onChange &&
+      //   (editor.onChange = (...args) => {
+      //     this.onChange(args[0]);
+      //     this._onChange.apply(editor, args);
+      //     if (this._waitUpdateTarget) {
+      //       this.editorState = args[0];
+      //       this.muxSetRaw(this._waitUpdateTarget);
+      //     }
+      //   });
+    } else {
+      this._update = editor.update; // listen to changes
+      this._update &&
+        (editor.update = (...args) => {
+          console.log(args);
+          this.onChange(args[0]);
+          this._update.apply(editor, args);
+          if (this._waitUpdateTarget) {
+            this.editorState = args[0];
+            this.muxSetRaw(this._waitUpdateTarget);
+          }
+        });
+    }
   };
 
   getEditorContainer = () => {
-    if (!this.editor) return null;
-    return this.editor.editorContainer || this.editor.editor.editorContainer;
+    if (!this.draftEditor) return null;
+    return (
+      this.draftEditor.editorContainer ||
+      this.draftEditor.editor?.editorContainer
+    );
   };
 
   // _onSelect = e => {
@@ -235,11 +258,7 @@ export class DraftBinding {
   // }
 
   getEditorState = () => {
-    return (
-      this.editorState ||
-      this.editor.props.editorState ||
-      this.editor.state.editorState
-    );
+    return this.editorState || this.draftEditor.props.editorState;
   };
 
   setStateByRaw = raw => {
@@ -256,7 +275,7 @@ export class DraftBinding {
     if (!selectionState.getHasFocus() && isCollapsed) {
       this.editorState = newEditorState;
       this.value = raw;
-      return _onChange.call(this.editor, this.editorState);
+      return _onChange.call(this.draftEditor, this.editorState);
     }
     this.setStateAndSelection(_onChange, newEditorState, isCollapsed, raw);
   };
@@ -275,14 +294,16 @@ export class DraftBinding {
       contentState
     );
     // this.localSelectionState = newSelection
-    console.log(this.shouldAcceptSelection);
-    this.editorState = EditorState[
-      isCollapsed || this.shouldAcceptSelection
-        ? 'acceptSelection'
-        : 'forceSelection'
-    ](newEditorState, newSelection);
+    // console.log(this.shouldAcceptSelection);
+    this.editorState = newSelection
+      ? EditorState[
+          isCollapsed || this.shouldAcceptSelection
+            ? 'acceptSelection'
+            : 'forceSelection'
+        ](newEditorState, newSelection)
+      : newEditorState;
     this.value = raw;
-    _onChange.call(this.editor, this.editorState);
+    _onChange.call(this.draftEditor, this.editorState);
   };
 
   releaseSelection = () => {
@@ -332,8 +353,12 @@ export class DraftBinding {
       'mousedown',
       this.releaseSelection
     );
-    this._update && this.editor && (this.editor.update = this._update);
-    this._onChange && this.editor && (this.editor.onChange = this._onChange);
+    this._update &&
+      this.draftEditor &&
+      (this.draftEditor.update = this._update);
+    this._onChange &&
+      this.draftEditor &&
+      (this.draftEditor.onChange = this._onChange);
     this.mutex = null;
     this.cancel?.();
     // this._monacoChangeHandler.dispose()

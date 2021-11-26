@@ -1,7 +1,7 @@
 import Dmp from 'diff-match-patch';
 import { isEmpty } from 'lodash';
 import { DiffPatcher } from 'jsondiffpatch/dist/jsondiffpatch.umd';
-import { transRaw } from './utils';
+import { transRaw, objToArray } from './utils';
 
 const diffPatcher = new DiffPatcher({
   objectHash: obj => {
@@ -100,11 +100,11 @@ const entityArray2Map = arr => {
     entity,
   };
 };
-const entityRange2Array = (entityRanges = [], entityPool, enityRangeMap) => {
+const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
   const arr = [];
   for (const index in entityRanges) {
     let target = null;
-    const enityRange = enityRangeMap[index];
+    const enityRange = enityRangeMap[index] || entityRanges[index];
     if (!enityRange?.key) continue;
     const { type, data } = enityRange.key;
     if (type === 'mention') {
@@ -164,11 +164,13 @@ const raw2rbw = raw => {
       enityRangeMap = Object.assign(enityRangeMap, rangeMap);
       blockMap[item.key] = {
         ...item,
-        inlineStyleRanges: inlineStyleRanges.map(item => ({
-          ...item,
-          length: formatStringLen(item.length),
-          offset: formatStringLen(item.offset),
-        })),
+        inlineStyleRanges: inlineStyleRanges
+          .map(item => ({
+            ...item,
+            length: formatStringLen(item.length),
+            offset: formatStringLen(item.offset),
+          }))
+          .arrayToObj(),
         entityRanges: entityRange,
       };
       return item.key;
@@ -209,11 +211,13 @@ const rbw2raw = rbw => {
       });
       return {
         ...blockMap[key],
-        inlineStyleRanges: blockMap[key].inlineStyleRanges.map(item => ({
-          ...item,
-          length: item.length?.length || 0,
-          offset: item.offset?.length || 0,
-        })),
+        inlineStyleRanges: objToArray(blockMap[key].inlineStyleRanges).map(
+          item => ({
+            ...item,
+            length: item.length?.length || 0,
+            offset: item.offset?.length || 0,
+          })
+        ),
         entityRanges,
       };
     })
