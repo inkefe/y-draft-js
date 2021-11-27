@@ -23,7 +23,7 @@ export default function Editor() {
     // const yRaw = ymap.get(contenField)
     // console.log(yRaw);
     // if(!yRaw) {
-    //   ymap.set(contenField, toRawSharedData(value, ymap))
+    //   ymap.set(contenField, toRawSharedData(value))
     // }
     console.log(ymap, 'ymap');
     const provider = new WebsocketProvider(
@@ -65,8 +65,8 @@ export default function Editor() {
         console.log(raw);
         setValue(raw);
       } else {
-        console.log('初始化');
-        ymap.set(contenField, toRawSharedData(value || rawContent, ymap));
+        console.log('initialize');
+        ymap.set(contenField, toRawSharedData(value || rawContent));
         setValue(value || rawContent);
       }
     });
@@ -80,7 +80,7 @@ export default function Editor() {
   }, []);
 
   const onChange = () => {
-    console.log('TeXEditorExample onChange');
+    // console.log('TeXEditorExample onChange');
   };
   return (
     <TeXEditorExample

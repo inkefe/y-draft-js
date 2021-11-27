@@ -92,6 +92,11 @@ const entityArray2Map = arr => {
       };
       return;
     }
+    // rangeMap[key] = {
+    //   length: formatStringLen(item.length),
+    //   offset: formatStringLen(item.offset),
+    //   key: entityData,
+    // }
     entityRange[index] = item;
   });
   return {
@@ -102,6 +107,8 @@ const entityArray2Map = arr => {
 };
 const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
   const arr = [];
+  // const isAtomic = Object.keys(entityRanges).every(key => +key >= 0)
+  // if (isAtomic) arr.push(objToArray(entityRanges))
   for (const index in entityRanges) {
     let target = null;
     const enityRange = enityRangeMap[index] || entityRanges[index];

@@ -1,6 +1,6 @@
 {
   "name": "y-draft-js",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Draft-js editor bindings for Yjs",
   "private": false,
   "main": "./lib/index.cjs.js",
@@ -10,7 +10,8 @@
   ],
   "keywords": [
     "draft-js",
-    "yjs"
+    "yjs",
+    "collaboration"
   ],
   "dependencies": {
     "diff-match-patch": "^1.0.5",

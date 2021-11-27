@@ -353,10 +353,7 @@ export function toSyncElement(item) {
   }
 
   if (Array.isArray(item)) {
-    const childElements = item.map(item => toSyncElement(item));
-    const arrayElement = new Y.Array();
-    arrayElement.insert(0, childElements);
-    return arrayElement;
+    return Y.Array.from(item.map(toSyncElement));
   }
 
   if (item && typeof item === 'object') {
@@ -396,7 +393,11 @@ export const changeYmapByDelta = (delta, ymap, syncOpr) => {
   console.log(operations, delta, ymap);
   ydoc.transact(() => {
     operations.forEach(opr => {
-      applyYDocOp(opr, ymap);
+      try {
+        applyYDocOp(opr, ymap);
+      } catch (e) {
+        console.error(ymap, opr, e);
+      }
     });
     if (syncOpr && syncOpr.apply) syncOpr(ymap);
   });
@@ -405,7 +406,6 @@ const applyYDocOp = (opr, ymap) => {
   const { type, path, action, value, index, length } = opr;
   if (type === 'string') {
     const target = getTargetByPath(path, ymap);
-    console.log(target, path, index, value);
     return action === 'insert'
       ? target.insert(index, value)
       : target.delete(index, length);
@@ -476,7 +476,6 @@ export const onTargetSync = (path, ymap, cb) => {
     ymap.unobserveDeep(ob);
   };
 };
-
 export { transRaw, getStringDiffArray, diffIndex, getNewSelection };
 
 // 解决draft-js跨行剪切报错
