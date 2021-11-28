@@ -464,15 +464,13 @@ export const onTargetSync = (path, ymap, cb) => {
     return;
   }
   function ob(e) {
-    const target = getTargetByPath(path, e.currentTargt, true);
+    const target = getTargetByPath(path, ymap, true);
     if (!target) return; // 等待目标字段的内容出现
     cb(target);
-    console.log('unobse--------------rveDeep');
-    e.currentTargt.unobserveDeep(ob);
+    ymap.unobserveDeep(ob);
   }
   ymap.observeDeep(ob);
   return () => {
-    console.log('cancel');
     ymap.unobserveDeep(ob);
   };
 };
