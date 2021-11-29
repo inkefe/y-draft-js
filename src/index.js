@@ -1,6 +1,6 @@
 // import * as error from 'lib0/error.js'
 // import invariant from 'tiny-invariant';
-import { createMutex } from 'lib0/mutex.js';
+import { createMutex } from 'lib0/mutex';
 // import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
 import { convertFromRaw, convertToRaw, EditorState } from 'draft-js';
 import {
@@ -12,7 +12,7 @@ import {
   onTargetSync,
   toRawSharedData,
 } from './utils';
-import { diffRaw, rbw2raw } from './diff';
+import { diffRaw, rbw2raw, raw2rbw } from './diff';
 
 const LOCAL_OPERATIONS = new WeakMap();
 const getRawBySharedData = (rawPath, ymap) => {
@@ -34,10 +34,11 @@ export {
   onTargetSync,
   toSyncElement,
   getNewSelection,
+  rbw2raw,
+  raw2rbw,
 };
 const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
-window.getRawByState = editorState =>
-  convertToRaw(editorState.getCurrentContent());
+
 export class DraftBinding {
   constructor(opts) {
     const { ymap, rawPath: _rawPath, editor, provider, parmas } = opts;
@@ -131,10 +132,11 @@ export class DraftBinding {
           const newJson = JSON.stringify(raw);
           const oldJson = JSON.stringify(this.value);
           if (oldJson === newJson || !this.rawYmap) return; // console.log(newJson, oldJson)
+          this.rawYmap = getTargetByPath(this.rawPath, this.ymap);
           const delta = diffRaw(this.value, raw);
           changeYmapByDelta(delta, this.rawYmap, () => {
-            this.oprID = this.oprID + '0';
             this.oprYText.insert(this.oprID.length, '0');
+            this.oprID = this.oprID + '0';
           });
           this.value = JSON.parse(newJson);
         },
@@ -173,7 +175,7 @@ export class DraftBinding {
     } else {
       this.oprID = '0';
       this.oprYText = toSyncElement(this.oprID);
-      rawYmap.set(CHANGE_CLIENT, toSyncElement(this.oprID));
+      rawYmap.set(CHANGE_CLIENT, this.oprYText);
     }
     this.value = rbw2raw(rawYmap.toJSON());
     this.onObserveDeep && rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
@@ -348,7 +350,7 @@ export class DraftBinding {
   // }
 
   destroy() {
-    console.warn('y-darf-js is destoryed');
+    // console.warn('y-darf-js is destoryed');
     this.getEditorContainer()?.removeEventListener(
       'mousedown',
       this.releaseSelection

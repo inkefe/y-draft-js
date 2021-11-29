@@ -1,6 +1,6 @@
 {
   "name": "y-draft-js",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Draft-js editor bindings for Yjs",
   "private": false,
   "main": "./lib/index.cjs.js",

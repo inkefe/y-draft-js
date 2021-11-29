@@ -1,8 +1,10 @@
 import Dmp from 'diff-match-patch';
 import { isEmpty } from 'lodash';
-import { DiffPatcher } from 'jsondiffpatch/dist/jsondiffpatch.umd';
+import { DiffPatcher } from 'jsondiffpatch';
 import { transRaw, objToArray } from './utils';
-
+Array.prototype.arrayToObj = function () {
+  return { ...this };
+};
 const diffPatcher = new DiffPatcher({
   objectHash: obj => {
     if (isEmpty(obj)) return '[]';
@@ -150,6 +152,7 @@ const CONSTANTS_MAP = {
   'ordered-list-item': 'ol',
   'unordered-list-item': 'ul',
 };
+
 const raw2rbw = raw => {
   if (!raw || typeof raw !== 'object') return raw;
   raw = transRaw(raw);
@@ -262,12 +265,14 @@ const getStringDiffArray = (txt1, txt2) => {
   return DMP.diff_main(txt1, txt2);
 };
 
-window.DMP = DMP;
-window.raw2rbw = raw2rbw;
-window.rbw2raw = rbw2raw;
-window.diffRaw = diffRaw;
-window.diffString = diffString;
-window.diffPatcher = diffPatcher;
+if (typeof window !== 'undefined') {
+  window.DMP = DMP;
+  window.raw2rbw = raw2rbw;
+  window.rbw2raw = rbw2raw;
+  window.diffRaw = diffRaw;
+  window.diffString = diffString;
+  window.diffPatcher = diffPatcher;
+}
 
 export {
   DiffPatcher,

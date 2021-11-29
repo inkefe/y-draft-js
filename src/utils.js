@@ -384,13 +384,13 @@ export const getTargetByPath = (path, target, isSync) => {
     return res;
   }, target);
 };
-window.Y = Y;
+
 export const changeYmapByDelta = (delta, ymap, syncOpr) => {
   if (!delta || delta.length === 0) return;
   const operations = getDeltaArray(delta, []);
   if (operations.length === 0) return;
   const ydoc = ymap.doc;
-  console.log(operations, delta, ymap);
+  // console.log(operations, delta, ymap);
   ydoc.transact(() => {
     operations.forEach(opr => {
       try {
@@ -476,5 +476,10 @@ export const onTargetSync = (path, ymap, cb) => {
 };
 export { transRaw, getStringDiffArray, diffIndex, getNewSelection };
 
-// 解决draft-js跨行剪切报错
-Node.prototype.removeChild = tryCatchFunc(Node.prototype.removeChild);
+if (typeof window !== 'undefined') {
+  // 解决draft-js跨行剪切报错
+  window.Node &&
+    (window.Node.prototype.removeChild = tryCatchFunc(
+      window.Node.prototype.removeChild
+    ));
+}
