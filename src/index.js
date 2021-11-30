@@ -147,6 +147,21 @@ export class DraftBinding {
     this.bindEditor(editor);
   }
 
+  // caretPositionCommit = selectionState => {
+  //   const focusKey = selectionState.getFocusKey()
+  //   const hasFocus = selectionState.getHasFocus()
+  //   const focusOffset = selectionState.getFocusOffset()
+  //   const anchorOffset = selectionState.getAnchorOffset()
+  //   const anchorKey = selectionState.getAnchorKey()
+  //   if ((this._preFocusOffset === -1 && !hasFocus) || (hasFocus && this._preFocusKey === focusKey && this._preFocusOffset === focusOffset)) return
+  //   this._preFocusKey = focusKey
+  //   this._preFocusOffset = focusOffset
+  //   this.awareness.setLocalStateField('selection', {
+  //     anchor: Y.createRelativePositionFromTypeIndex(ytext, anchor),
+  //     head: Y.createRelativePositionFromTypeIndex(ytext, head)
+  //   })
+  // }
+
   forceRefresh = () => {
     const raw = rbw2raw(this.rawYmap.toJSON());
     this.muxSetRaw(raw);

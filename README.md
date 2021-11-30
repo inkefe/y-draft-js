@@ -1,6 +1,6 @@
 # y-draft-js
 
-Draft-js editor bindings for [Yjs](https://github.com/yjs/yjs), a modern, fast, and powerful JavaScript library for collaborative editing.
+[Draft.js](https://draftjs.org/) editor bindings for [Yjs](https://github.com/yjs/yjs), a modern, fast, and powerful JavaScript library for collaborative editing.
 
 ## usage
 
@@ -70,7 +70,9 @@ const target = getTargetByPath(path, ymap); // get target by ymap path
 4. onTargetSync
 
 ```js
-onTargetSync(path, ymap, callback); // The callback is triggered when the listening target has a value (This is useful when you are not sure if the data under the destination path exists)
+const cancel = onTargetSync(path, ymap, callback); // The callback is triggered when the listening target has a value or target is replaced (This is useful when you are not sure if the data under the destination path exists)
+// cancel the listener when component unmount
+cancel();
 ```
 
 5. toSyncElement

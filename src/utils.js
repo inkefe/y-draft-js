@@ -453,7 +453,7 @@ const applyYDocOp = (opr, ymap) => {
     // }
   }
 };
-// 获取指定路径的数据，如果有值则用回调返回，如果没有则自动监听到目标值出现，并返回的cancle方法可以取消监听
+// 获取指定路径的数据，如果有值则用回调返回，如果没有则自动监听到目标值出现, 并且持续监听目标路径下的y对象，一旦被更改成另一个对象也会执行回调，并返回的cancle方法来取消监听
 export const onTargetSync = (path, ymap, cb) => {
   if (!ymap) return console.warn('ymap is undefined');
   if (!cb) return console.warn('callback is necessary in onTargetSync');
@@ -461,13 +461,13 @@ export const onTargetSync = (path, ymap, cb) => {
   const target = getTargetByPath(path, ymap, true);
   if (target) {
     cb(target);
-    return;
   }
+  let _target = null;
   function ob(e) {
     const target = getTargetByPath(path, ymap, true);
     if (!target) return; // 等待目标字段的内容出现
-    cb(target);
-    ymap.unobserveDeep(ob);
+    _target !== target && cb(target);
+    _target = target;
   }
   ymap.observeDeep(ob);
   return () => {
@@ -475,11 +475,3 @@ export const onTargetSync = (path, ymap, cb) => {
   };
 };
 export { transRaw, getStringDiffArray, diffIndex, getNewSelection };
-
-if (typeof window !== 'undefined') {
-  // 解决draft-js跨行剪切报错
-  window.Node &&
-    (window.Node.prototype.removeChild = tryCatchFunc(
-      window.Node.prototype.removeChild
-    ));
-}

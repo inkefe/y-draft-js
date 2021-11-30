@@ -2,6 +2,7 @@ import Dmp from 'diff-match-patch';
 import { isEmpty } from 'lodash';
 import { DiffPatcher } from 'jsondiffpatch';
 import { transRaw, objToArray } from './utils';
+// eslint-disable-next-line no-extend-native
 Array.prototype.arrayToObj = function () {
   return { ...this };
 };
@@ -264,15 +265,6 @@ const patchString = (txt, diff, back) => {
 const getStringDiffArray = (txt1, txt2) => {
   return DMP.diff_main(txt1, txt2);
 };
-
-if (typeof window !== 'undefined') {
-  window.DMP = DMP;
-  window.raw2rbw = raw2rbw;
-  window.rbw2raw = rbw2raw;
-  window.diffRaw = diffRaw;
-  window.diffString = diffString;
-  window.diffPatcher = diffPatcher;
-}
 
 export {
   DiffPatcher,
