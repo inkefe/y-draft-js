@@ -123,12 +123,17 @@ export class DraftBinding {
           this.editorState = editorState;
           const raw = transRaw(convertToRaw(editorState.getCurrentContent()));
           if (!this.value) return (this.value = raw);
-          if (
-            this.shouldAcceptSelection &&
-            !editorState.getSelection().isCollapsed()
-          ) {
+          const selection = editorState.getSelection();
+          if (this.shouldAcceptSelection && !selection.isCollapsed()) {
             this.shouldAcceptSelection = false;
           } // 释放控制
+          this.awareness.setLocalStateField('selection', {
+            anchorKey: selection.getAnchorKey(),
+            anchorOffset: selection.getAnchorOffset(),
+            focusKey: selection.getFocusKey(),
+            focusOffset: selection.getFocusOffset(),
+            hasFocus: selection.getHasFocus(),
+          });
           const newJson = JSON.stringify(raw);
           const oldJson = JSON.stringify(this.value);
           if (oldJson === newJson || !this.rawYmap) return; // console.log(newJson, oldJson)
@@ -200,8 +205,9 @@ export class DraftBinding {
     // 支持异步绑定编辑器
     if (!editor || this.draftEditor) return;
     const draftEditor = editor.update ? editor : editor.editor;
-    if (!draftEditor || !editor.componentDidUpdate)
+    if (!draftEditor || !editor.componentDidUpdate) {
       return console.warn('editor must be Draft ref');
+    }
     const isPluginEditor = !!editor.onChange;
     this.draftEditor = editor;
     this.getEditorContainer()?.addEventListener(

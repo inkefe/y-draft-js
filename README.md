@@ -2,6 +2,8 @@
 
 [Draft.js](https://draftjs.org/) editor bindings for [Yjs](https://github.com/yjs/yjs), a modern, fast, and powerful JavaScript library for collaborative editing.
 
+> Awareness has saved SelectionState.
+
 ## usage
 
 1. install
