@@ -1,8 +1,27 @@
 import * as Y from 'yjs';
 import Dmp from 'diff-match-patch';
-import { SelectionState } from 'draft-js';
+import { SelectionState, genKey } from 'draft-js';
 import { raw2rbw } from './diff';
 
+const getRaw = text => ({
+  blocks: [
+    {
+      key: genKey(),
+      text,
+      type: 'unstyled',
+      depth: 0,
+      inlineStyleRanges: [],
+      entityRanges: [],
+      data: {},
+    },
+  ],
+  entityMap: {},
+});
+// text转RAW, key为xxxx，没有@
+export const stringToRaw = str => {
+  const contentRaw = String(str).split('\n').map(getRaw);
+  return contentRaw;
+};
 // 类数组对象转数组的方法
 export function objToArray(obj) {
   if (!obj) return [];
@@ -45,16 +64,18 @@ const getStringDiffArray = (txt1, txt2) => {
   return DMP.diff_main(txt1, txt2);
 };
 
-export const transToObj = raw =>
+export const transToRawObj = raw =>
   typeof raw === 'string' && raw.match(/^({|\[)/)
     ? tryCatchFunc(raw => {
         return JSON.parse(raw);
-      })(raw) || raw
-    : raw;
+      })(raw) || stringToRaw(raw)
+    : raw.blocks
+    ? raw
+    : stringToRaw('');
 
 // RAW转text
 export const rawToText = raw => {
-  raw = transToObj(raw);
+  raw = transToRawObj(raw);
   if (!raw) return '';
   return raw.blocks
     ? raw.blocks.reduce(
@@ -385,9 +406,11 @@ export const getTargetByPath = (path, target, isSync) => {
   }, target);
 };
 
-export const changeYmapByDelta = (delta, ymap, syncOpr) => {
+export const changeYmapByDelta = (delta, ymap, syncOpr, origin) => {
   if (!delta || delta.length === 0) return;
-  const operations = getDeltaArray(delta, []);
+  const operations = getDeltaArray(delta, []).sort(
+    (a, b) => a.path.length - b.path.length
+  );
   if (operations.length === 0) return;
   const ydoc = ymap.doc;
   // console.log(operations, delta, ymap);
@@ -400,7 +423,7 @@ export const changeYmapByDelta = (delta, ymap, syncOpr) => {
       }
     });
     if (syncOpr && syncOpr.apply) syncOpr(ymap);
-  });
+  }, origin);
 };
 const applyYDocOp = (opr, ymap) => {
   const { type, path, action, value, index, length } = opr;
