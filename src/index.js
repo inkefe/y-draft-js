@@ -84,11 +84,11 @@ export class DraftBinding {
     //   editor._onSelect(e)
     //   this._onSelect(e)
     // }
-    this.onObserveDeep = (event, isupate) => {
+    this.onObserveDeep = (events, isupate) => {
       let currentTarget = null;
-      event.forEach(item => {
+      const originOrpId = events[0].currentTarget.get(CHANGE_CLIENT).toString();
+      events.forEach(item => {
         const { path } = item;
-        const originOrpId = item.currentTarget.get(CHANGE_CLIENT).toString();
         if (
           path.length > 0 &&
           path[0] !== CHANGE_CLIENT &&
@@ -223,6 +223,16 @@ export class DraftBinding {
       this._onChange = editor.onChange;
       const componentDidUpdate = editor.componentDidUpdate; // listen to changes
       const that = this;
+      this._onChange &&
+        (editor.onChange = function (...args) {
+          if (this !== editor) that.onChange(args[0]);
+          that._onChange.apply(editor, args);
+          that.editorState = args[0];
+          if (that._waitUpdateTarget) {
+            that._lock = false;
+            that.muxSetRaw(that._waitUpdateTarget);
+          }
+        });
       editor.componentDidUpdate = function (prevProps, prevState) {
         const editorState = editor.getEditorState();
         if (
@@ -235,7 +245,7 @@ export class DraftBinding {
             that.muxSetRaw.call(that, that._waitUpdateTarget);
           }
         }
-        componentDidUpdate.apply(editor, [prevProps, prevState]);
+        componentDidUpdate.apply(this, [prevProps, prevState]);
       };
     } else {
       this._update = editor.update; // listen to changes
@@ -336,7 +346,9 @@ export class DraftBinding {
     this._update &&
       this.draftEditor &&
       (this.draftEditor.update = this._update);
-    // this.mutex = null;
+    this._onChange &&
+      this.draftEditor &&
+      (this.draftEditor.onChange = this._onChange);
     this.cancel?.();
     this.rawYmap && this.rawYmap.unobserveDeep(this.onObserveDeep);
     if (this.awareness !== null) {
