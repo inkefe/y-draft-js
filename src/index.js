@@ -149,7 +149,7 @@ export class DraftBinding {
           this.value = JSON.parse(newJson);
         },
         () => {
-          console.warn('onChange has been delayed');
+          console.warn('onChange has been delayed', this);
         }
       );
     this.bindEditor(editor);
@@ -171,7 +171,7 @@ export class DraftBinding {
         }
       },
       () => {
-        console.warn('setStateByRaw has been delayed');
+        console.warn('setStateByRaw has been delayed', this);
         this._waitUpdateTarget = raw;
       }
     );
