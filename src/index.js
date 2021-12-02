@@ -1,6 +1,5 @@
 // import * as error from 'lib0/error.js'
 // import invariant from 'tiny-invariant';
-import { createMutex } from 'lib0/mutex';
 import * as Y from 'yjs';
 // import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
 import {
@@ -56,7 +55,19 @@ export class DraftBinding {
     this.trackedSet = new Set([this.clientID, this]);
     this.ymap = ymap;
     this.awareness = provider.awareness;
-    this.mutex = createMutex();
+    this._lock = true;
+    this.mutex = (f, g) => {
+      if (this._lock) {
+        this._lock = false;
+        try {
+          f();
+        } finally {
+          this._lock = true;
+        }
+      } else if (g !== undefined) {
+        g();
+      }
+    };
     this.rawPath = rawPath;
     // console.log(
     //   'DraftBinding',
