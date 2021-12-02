@@ -48,6 +48,7 @@ const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
 export class DraftBinding {
   constructor(opts) {
     const { ymap, rawPath: _rawPath, editor, provider, parmas } = opts;
+    this.version = VERSION
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
     this.doc = ymap.doc;
@@ -61,9 +62,11 @@ export class DraftBinding {
         this._lock = true;
         try {
           f();
+          this._lock = false;
         } finally {
           this._lock = false;
         }
+        this._lock = false;
       } else if (g !== undefined) {
         g();
       }
@@ -224,7 +227,7 @@ export class DraftBinding {
         ) {
           that.onChange(editorState);
           if (that._waitUpdateTarget) {
-            this._lock = false;
+            that._lock = false;
             that.muxSetRaw(that._waitUpdateTarget);
           }
         }
