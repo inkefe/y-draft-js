@@ -195,6 +195,7 @@ const raw2rbw = raw => {
 
 const rbw2raw = rbw => {
   const { blocks, blockMap, entityPool, enityRangeMap } = rbw;
+  if (!rbw || !blocks) return rbw;
   const entityMap = {};
   let entityKey = 0;
   const commentMap = new Map();

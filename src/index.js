@@ -21,6 +21,7 @@ const getRawBySharedData = (rawPath, ymap) => {
   if (!target) return null;
   const rbw = target.toJSON();
   const raw = rbw2raw(rbw);
+  if (!rbw || !rbw.blocks) return rbw;
   if (raw.blocks.length !== rbw.blocks.length) {
     ymap.set(rawPath, toRawSharedData(raw));
   } // 修复
