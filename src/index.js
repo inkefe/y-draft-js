@@ -48,7 +48,7 @@ const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
 export class DraftBinding {
   constructor(opts) {
     const { ymap, rawPath: _rawPath, editor, provider, parmas } = opts;
-    this.version = VERSION
+    this.version = VERSION;
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
     this.doc = ymap.doc;
@@ -165,6 +165,10 @@ export class DraftBinding {
     this.mutex(
       () => {
         this.setStateByRaw(raw);
+        if (this._waitUpdateTarget) {
+          this._lock = false;
+          return this.muxSetRaw(this._waitUpdateTarget);
+        }
       },
       () => {
         console.warn('setStateByRaw has been delayed');
@@ -228,7 +232,7 @@ export class DraftBinding {
           that.onChange(editorState);
           if (that._waitUpdateTarget) {
             that._lock = false;
-            that.muxSetRaw(that._waitUpdateTarget);
+            that.muxSetRaw.call(that, that._waitUpdateTarget);
           }
         }
         componentDidUpdate.apply(editor, [prevProps, prevState]);
