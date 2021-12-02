@@ -55,14 +55,14 @@ export class DraftBinding {
     this.trackedSet = new Set([this.clientID, this]);
     this.ymap = ymap;
     this.awareness = provider.awareness;
-    this._lock = true;
+    this._lock = false;
     this.mutex = (f, g) => {
-      if (this._lock) {
-        this._lock = false;
+      if (!this._lock) {
+        this._lock = true;
         try {
           f();
         } finally {
-          this._lock = true;
+          this._lock = false;
         }
       } else if (g !== undefined) {
         g();
@@ -224,6 +224,7 @@ export class DraftBinding {
         ) {
           that.onChange(editorState);
           if (that._waitUpdateTarget) {
+            this._lock = false;
             that.muxSetRaw(that._waitUpdateTarget);
           }
         }
@@ -236,6 +237,7 @@ export class DraftBinding {
           this.onChange(args[0]);
           this._update.apply(editor, args);
           if (this._waitUpdateTarget) {
+            this._lock = false;
             this.editorState = args[0];
             this.muxSetRaw(this._waitUpdateTarget);
           }
