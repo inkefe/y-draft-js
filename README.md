@@ -47,6 +47,69 @@ provider.connect();
 draftBind.destroy();
 ```
 
+## awareness
+
+All clients are stored in the `provider.awareness`.
+
+```js
+provider.awareness.getStates().forEach(state => {
+  console.log(state.selection); // selection state by all clients
+});
+```
+
+## undoManager
+
+`draftBind.undo` and `draftBind.redo` can be used to undo and redo. if you want to jump to the specified step, you can set `allowUndo = false` in `editorState`
+
+```js
+const newEditorState = EditorState.push(
+  editorState,
+  newContentState,
+  'insert-characters'
+);
+newEditorState.allowUndo = false; // not allow undo [y-draft-js]
+this.setState({ editorState: newEditorState });
+```
+
+exp:
+
+```js
+
+handleKeyCommand = (command, editorState) => {
+  if(command === 'y-draft-undo') {
+    this.draftBind?.undo();
+    return 'handled';
+  }
+  if(command === 'y-draft-redo') {
+    this.draftBind?.redo();
+    return 'handled';
+  }
+  const newState = RichUtils.handleKeyCommand(editorState, command);
+  if (newState) {
+    this._onChange(newState);
+    return true;
+  }
+  return false;
+};
+
+myKeyBindingFn(e) {
+  const cmd = getDefaultKeyBinding(e);
+  if (cmd === 'undo') return 'y-draft-undo';
+  if (cmd === 'redo') return 'y-draft-redo';
+  return cmd;
+}
+```
+
+```js
+<Editor
+  editorState={editorState}
+  handleKeyCommand={this.handleKeyCommand}
+  keyBindingFn={this.myKeyBindingFn}
+  onChange={this._onChange}
+  ref={ref => (this.editorRef = ref)}
+/>
+```
+
 ## API
 
 > Because `raw` is not suitable for diff calculation save, so it did a layer of RAW conversion, conversion methods will be introduced

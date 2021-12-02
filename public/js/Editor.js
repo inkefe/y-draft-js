@@ -10,6 +10,7 @@ import TeXEditorExample from './components/TeXEditorExample';
 
 const id = 'draf-tex';
 const contenField = 'raw';
+const HOST = window.location.host.split(':')[0];
 const parmas = {
   user: Math.random().toString(36).substring(7),
 };
@@ -17,6 +18,7 @@ export default function Editor() {
   const editorRef = React.useRef(null);
   const [isOnline, setOnlineState] = useState(false);
   const [value, setValue] = useState(null);
+  const [draftBind, setDraftBind] = useState(null);
   const [ymap, provider] = useMemo(() => {
     const ydoc = new Y.Doc();
     const ymap = ydoc.getMap(id);
@@ -26,14 +28,9 @@ export default function Editor() {
     //   ymap.set(contenField, toRawSharedData(value))
     // }
     console.log(ymap, 'ymap');
-    const provider = new WebsocketProvider(
-      'ws://192.168.101.127:1234',
-      id,
-      ydoc,
-      {
-        connect: false,
-      }
-    );
+    const provider = new WebsocketProvider(`ws://${HOST}:1234`, id, ydoc, {
+      connect: false,
+    });
     return [ymap, provider];
   }, [id]);
 
@@ -45,7 +42,9 @@ export default function Editor() {
       provider,
       parmas,
     });
+    setDraftBind(draftBind);
     window.ymap = ymap;
+    window.draftBind = draftBind;
     provider.on('status', ({ status }) => {
       setOnlineState(status === 'connected');
     });
@@ -85,6 +84,7 @@ export default function Editor() {
   return (
     <TeXEditorExample
       ref={editorRef}
+      draftBind={draftBind}
       isOnline={isOnline}
       onChange={onChange}
       defaultValue={value}

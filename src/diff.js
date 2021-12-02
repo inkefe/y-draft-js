@@ -149,11 +149,6 @@ const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
   return arr;
 };
 
-const CONSTANTS_MAP = {
-  'ordered-list-item': 'ol',
-  'unordered-list-item': 'ul',
-};
-
 const raw2rbw = raw => {
   if (!raw || typeof raw !== 'object') return raw;
   raw = transRaw(raw);
@@ -247,22 +242,7 @@ const diffRaw = (preRaw, nextRaw) => {
   return delta;
 };
 const DMP = new Dmp();
-const diffString = (txt1, txt2) => {
-  return DMP.patch_toText(DMP.patch_make(txt1, txt2));
-};
-const patchString = (txt, diff, back) => {
-  // console.log('patchString', txt, ' => ', diff);
-  const results = DMP.patch_apply(DMP.patch_fromText(diff), txt);
-  // console.log(JSON.stringify(results));
-  for (let i = 0; i < results[1].length; i++) {
-    if (!results[1][i]) {
-      const _error = new Error('text patch failed');
-      _error.textPatchFailed = true;
-      return back || txt;
-    }
-  }
-  return results[0];
-};
+
 const getStringDiffArray = (txt1, txt2) => {
   return DMP.diff_main(txt1, txt2);
 };
@@ -272,8 +252,6 @@ export {
   diffPatcher,
   DMP,
   diffRaw,
-  diffString,
-  patchString,
   getStringDiffArray,
   raw2rbw,
   rbw2raw,

@@ -12,7 +12,12 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import Draft, { Modifier, SelectionState } from 'draft-js';
+import Draft, {
+  Modifier,
+  SelectionState,
+  KeyBindingUtil,
+  getDefaultKeyBinding,
+} from 'draft-js';
 import { Map } from 'immutable';
 import React from 'react';
 import faker from 'faker';
@@ -106,15 +111,6 @@ class TeXEditorExample extends React.Component {
       onChange && onChange(editorState);
     };
 
-    this._handleKeyCommand = (command, editorState) => {
-      const newState = RichUtils.handleKeyCommand(editorState, command);
-      if (newState) {
-        this._onChange(newState);
-        return true;
-      }
-      return false;
-    };
-
     this._removeTeX = blockKey => {
       const { editorState, liveTeXEdits } = this.state;
       this.setState({
@@ -132,11 +128,35 @@ class TeXEditorExample extends React.Component {
     };
   }
 
+  handleKeyCommand = (command, editorState) => {
+    if (command === 'y-draft-undo') {
+      this.props.draftBind?.undo();
+      return 'handled';
+    }
+    if (command === 'y-draft-redo') {
+      this.props.draftBind?.redo();
+      return 'handled';
+    }
+    const newState = RichUtils.handleKeyCommand(editorState, command);
+    if (newState) {
+      this._onChange(newState);
+      return true;
+    }
+    return false;
+  };
+
+  myKeyBindingFn(e) {
+    const cmd = getDefaultKeyBinding(e);
+    if (cmd === 'undo') return 'y-draft-undo';
+    if (cmd === 'redo') return 'y-draft-redo';
+    return cmd;
+  }
+
   mockInsertText = () => {
     const { isMock } = this.state;
     this.setState({ isMock: !isMock });
     if (!isMock) {
-      this.timer = window.setInterval(this.autoInsertText, 72);
+      this.timer = window.setInterval(this.autoInsertText, 3000);
     } else {
       window.clearInterval(this.timer);
       this.timer = null;
@@ -222,9 +242,14 @@ class TeXEditorExample extends React.Component {
         focusOffset: anchorOffset + 1,
       })
     );
-    this.editorRef.editor.update(
-      EditorState.push(editorState, newContentState, 'remove-characters')
+    const editorStateNew = EditorState.push(
+      editorState,
+      newContentState,
+      'remove-characters'
     );
+    editorStateNew.allowUndo = false; // undo [y-draft-js]
+    this.editorRef.editor.update(editorStateNew);
+    console.log(editorStateNew, editorStateNew.allowUndo);
   };
 
   componentDidMount() {
@@ -269,7 +294,8 @@ class TeXEditorExample extends React.Component {
             <Editor
               blockRendererFn={this._blockRenderer}
               editorState={editorState}
-              handleKeyCommand={this._handleKeyCommand}
+              handleKeyCommand={this.handleKeyCommand}
+              keyBindingFn={this.myKeyBindingFn}
               onChange={this._onChange}
               placeholder='Start a document...'
               plugins={plugins}

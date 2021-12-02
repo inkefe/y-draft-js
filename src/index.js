@@ -1,8 +1,14 @@
 // import * as error from 'lib0/error.js'
 // import invariant from 'tiny-invariant';
 import { createMutex } from 'lib0/mutex';
+import * as Y from 'yjs';
 // import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
-import { convertFromRaw, convertToRaw, EditorState } from 'draft-js';
+import {
+  convertFromRaw,
+  convertToRaw,
+  EditorState,
+  getDefaultKeyBinding,
+} from 'draft-js';
 import {
   transRaw,
   getNewSelection,
@@ -46,6 +52,8 @@ export class DraftBinding {
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
     this.doc = ymap.doc;
+    this.clientID = this.doc.clientID;
+    this.trackedSet = new Set([this.clientID, this]);
     this.ymap = ymap;
     this.awareness = provider.awareness;
     this.mutex = createMutex();
@@ -62,12 +70,6 @@ export class DraftBinding {
     //   editor._onSelect(e)
     //   this._onSelect(e)
     // }
-    // this.value = rbw2raw(ymap.get(key)?.toJSON())
-    // console.log(this.value, this.rawPath);
-    // ymap.doc.on('afterTransaction', update => {
-    //   console.log(update, 'afterTransaction');
-    // })
-
     this.onObserveDeep = (event, isupate) => {
       let currentTarget = null;
       event.forEach(item => {
@@ -96,27 +98,6 @@ export class DraftBinding {
       : (this.cancel = onTargetSync(this.rawPath, ymap, rawYmap => {
           this.listenTargetYmap(rawYmap);
         }));
-    // editor.onDidChangeCursorSelection(() => {
-    //   if (editor.getModel() === monacoModel) {
-    //     const sel = editor.getSelection()
-    //     if (sel === null) {
-    //       return
-    //     }
-    //     let anchor = monacoModel.getOffsetAt(sel.getStartPosition())
-    //     let head = monacoModel.getOffsetAt(sel.getEndPosition())
-    //     if (sel.getDirection() === monaco.SelectionDirection.RTL) {
-    //       const tmp = anchor
-    //       anchor = head
-    //       head = tmp
-    //     }
-    //     awareness.setLocalStateField('selection', {
-    //       anchor: Y.createRelativePositionFromTypeIndex(ytext, anchor),
-    //       head: Y.createRelativePositionFromTypeIndex(ytext, head)
-    //     })
-    //   }
-    // })
-    // this.awareness.on('change', this.rerenderDecorations)
-    // this.onChange = this.onChange
 
     this.onChange = editorState =>
       this.mutex(
@@ -125,6 +106,8 @@ export class DraftBinding {
           const raw = transRaw(convertToRaw(editorState.getCurrentContent()));
           if (!this.value) return (this.value = raw);
           const selection = editorState.getSelection();
+          const allowUndo =
+            this.editorState.allowUndo ?? this.editorState.getAllowUndo();
           if (this.shouldAcceptSelection && !selection.isCollapsed()) {
             this.shouldAcceptSelection = false;
           } // 释放控制
@@ -140,10 +123,15 @@ export class DraftBinding {
           if (oldJson === newJson || !this.rawYmap) return; // console.log(newJson, oldJson)
           this.rawYmap = getTargetByPath(this.rawPath, this.ymap);
           const delta = diffRaw(this.value, raw);
-          changeYmapByDelta(delta, this.rawYmap, () => {
-            this.oprYText.insert(this.oprID.length, '0');
-            this.oprID = this.oprID + '0';
-          });
+          changeYmapByDelta(
+            delta,
+            this.rawYmap,
+            () => {
+              this.oprYText.insert(this.oprID.length, '0');
+              this.oprID = this.oprID + '0';
+            },
+            allowUndo ? this.clientID : null
+          );
           this.value = JSON.parse(newJson);
         },
         () => {
@@ -152,21 +140,6 @@ export class DraftBinding {
       );
     this.bindEditor(editor);
   }
-
-  // caretPositionCommit = selectionState => {
-  //   const focusKey = selectionState.getFocusKey()
-  //   const hasFocus = selectionState.getHasFocus()
-  //   const focusOffset = selectionState.getFocusOffset()
-  //   const anchorOffset = selectionState.getAnchorOffset()
-  //   const anchorKey = selectionState.getAnchorKey()
-  //   if ((this._preFocusOffset === -1 && !hasFocus) || (hasFocus && this._preFocusKey === focusKey && this._preFocusOffset === focusOffset)) return
-  //   this._preFocusKey = focusKey
-  //   this._preFocusOffset = focusOffset
-  //   this.awareness.setLocalStateField('selection', {
-  //     anchor: Y.createRelativePositionFromTypeIndex(ytext, anchor),
-  //     head: Y.createRelativePositionFromTypeIndex(ytext, head)
-  //   })
-  // }
 
   forceRefresh = () => {
     const raw = rbw2raw(this.rawYmap.toJSON());
@@ -198,8 +171,21 @@ export class DraftBinding {
       this.oprYText = toSyncElement(this.oprID);
       rawYmap.set(CHANGE_CLIENT, this.oprYText);
     }
+    this.undoManager = new Y.UndoManager(this.rawYmap, {
+      trackedOrigins: this.trackedSet,
+    });
     this.value = rbw2raw(rawYmap.toJSON());
     this.onObserveDeep && rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
+  };
+
+  undo = () => {
+    if (!this.undoManager) return;
+    this.undoManager.undo();
+  };
+
+  redo = () => {
+    if (!this.undoManager) return;
+    this.undoManager.redo();
   };
 
   bindEditor = editor => {
@@ -232,21 +218,10 @@ export class DraftBinding {
         }
         componentDidUpdate.apply(editor, [prevProps, prevState]);
       };
-      // this._onChange = editor.onChange; // listen to changes
-      // this._onChange &&
-      //   (editor.onChange = (...args) => {
-      //     this.onChange(args[0]);
-      //     this._onChange.apply(editor, args);
-      //     if (this._waitUpdateTarget) {
-      //       this.editorState = args[0];
-      //       this.muxSetRaw(this._waitUpdateTarget);
-      //     }
-      //   });
     } else {
       this._update = editor.update; // listen to changes
       this._update &&
         (editor.update = (...args) => {
-          console.log(args);
           this.onChange(args[0]);
           this._update.apply(editor, args);
           if (this._waitUpdateTarget) {
@@ -290,11 +265,8 @@ export class DraftBinding {
     if (!raw || !raw.blocks || !_onChange) return;
     const editorState = this.getEditorState();
     const selectionState = editorState.getSelection();
-    const newEditorState = EditorState.push(
-      editorState,
-      convertFromRaw(raw),
-      'sycn-change'
-    );
+    const newEditorState = EditorState.createWithContent(convertFromRaw(raw));
+    newEditorState.allowUndo = false;
     const isCollapsed = selectionState.isCollapsed();
     if (!selectionState.getHasFocus() && isCollapsed) {
       this.editorState = newEditorState;
@@ -327,49 +299,13 @@ export class DraftBinding {
         ](newEditorState, newSelection)
       : newEditorState;
     this.value = raw;
+    this.editorState.allowUndo = false;
     _onChange.call(this.draftEditor, this.editorState);
   };
 
   releaseSelection = () => {
     this.shouldAcceptSelection = true;
   };
-
-  decorations = new Map();
-
-  // 渲染光标
-  // rerenderDecorations = () => {
-  //   // const currentDecorations = this.decorations.get(this.editor) || []
-  //   const newDecorations = []
-  //   this.awareness.getStates().forEach((state, clientID) => {
-  //     if (clientID !== this.doc.clientID && state.selection != null && state.selection.anchor != null && state.selection.head != null) {
-  //       const anchorAbs = Y.createAbsolutePositionFromRelativePosition(state.selection.anchor, this.doc)
-  //       const headAbs = Y.createAbsolutePositionFromRelativePosition(state.selection.head, this.doc)
-  //       if (anchorAbs !== null && headAbs !== null && anchorAbs.type === ytext && headAbs.type === ytext) {
-  //         let start, end, afterContentClassName, beforeContentClassName
-  //         if (anchorAbs.index < headAbs.index) {
-  //           start = monacoModel.getPositionAt(anchorAbs.index)
-  //           end = monacoModel.getPositionAt(headAbs.index)
-  //           afterContentClassName = 'yRemoteSelectionHead'
-  //           beforeContentClassName = null
-  //         } else {
-  //           start = monacoModel.getPositionAt(headAbs.index)
-  //           end = monacoModel.getPositionAt(anchorAbs.index)
-  //           afterContentClassName = null
-  //           beforeContentClassName = 'yRemoteSelectionHead'
-  //         }
-  //         // newDecorations.push({
-  //         //   range: new SelectionState(start.lineNumber, start.column, end.lineNumber, end.column),
-  //         //   options: {
-  //         //     className: 'yRemoteSelection',
-  //         //     afterContentClassName,
-  //         //     beforeContentClassName
-  //         //   }
-  //         // })
-  //       }
-  //     }
-  //   })
-  //   // this.decorations.set(editor, editor.deltaDecorations(currentDecorations, newDecorations))
-  // }
 
   destroy() {
     // console.warn('y-darf-js is destoryed');
@@ -380,14 +316,9 @@ export class DraftBinding {
     this._update &&
       this.draftEditor &&
       (this.draftEditor.update = this._update);
-    this._onChange &&
-      this.draftEditor &&
-      (this.draftEditor.onChange = this._onChange);
-    this.mutex = null;
+    // this.mutex = null;
     this.cancel?.();
-    // this._monacoChangeHandler.dispose()
     this.rawYmap && this.rawYmap.unobserveDeep(this.onObserveDeep);
-    // this.doc.off('beforeAllTransactions', this._beforeTransaction)
     if (this.awareness !== null) {
       // @ts-ignore
       this.awareness.off('change', this.rerenderDecorations);
