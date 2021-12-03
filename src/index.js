@@ -6,6 +6,7 @@ import {
   convertFromRaw,
   convertToRaw,
   EditorState,
+  genKey,
   getDefaultKeyBinding,
 } from 'draft-js';
 import {
@@ -86,14 +87,11 @@ export class DraftBinding {
     // }
     this.onObserveDeep = (events, isupate) => {
       let currentTarget = null;
-      const originOrpId = events[0].currentTarget.get(CHANGE_CLIENT).toString();
+      const originOrpId = events[0].currentTarget.get(CHANGE_CLIENT);
+      if (this.oprID === originOrpId) return;
       events.forEach(item => {
         const { path } = item;
-        if (
-          path.length > 0 &&
-          path[0] !== CHANGE_CLIENT &&
-          this.oprID !== originOrpId
-        ) {
+        if (path.length > 0 && path[0] !== CHANGE_CLIENT) {
           // 自己的更改不用更新
           currentTarget = item.currentTarget;
           this.oprID = originOrpId;
@@ -117,6 +115,7 @@ export class DraftBinding {
       this.mutex(
         () => {
           this.editorState = editorState;
+          // console.log('this.onChange');
           const raw = transRaw(convertToRaw(editorState.getCurrentContent()));
           if (!this.value) return (this.value = raw);
           const selection = editorState.getSelection();
@@ -141,8 +140,8 @@ export class DraftBinding {
             delta,
             this.rawYmap,
             () => {
-              this.oprYText.insert(this.oprID.length, '0');
-              this.oprID = this.oprID + '0';
+              this.oprID = genKey();
+              this.rawYmap.set(CHANGE_CLIENT, this.oprID);
             },
             allowUndo ? this.clientID : null
           );
@@ -179,15 +178,10 @@ export class DraftBinding {
 
   listenTargetYmap = rawYmap => {
     this.rawYmap = rawYmap;
-    if (rawYmap.get(CHANGE_CLIENT)) {
-      // A tag used to record local actions to prevent executing `setStateByRaw()`
-      this.oprYText = rawYmap.get(CHANGE_CLIENT);
-      this.oprYText.delete(0, this.oprYText.length - 1);
-      this.oprID = this.oprYText.toString();
-    } else {
-      this.oprID = '0';
-      this.oprYText = toSyncElement(this.oprID);
-      rawYmap.set(CHANGE_CLIENT, this.oprYText);
+    this.oprID = rawYmap.get(CHANGE_CLIENT);
+    if (!this.oprID) {
+      this.oprID = genKey();
+      rawYmap.set(CHANGE_CLIENT, this.oprID);
     }
     this.undoManager = new Y.UndoManager(this.rawYmap, {
       trackedOrigins: this.trackedSet,
@@ -225,7 +219,10 @@ export class DraftBinding {
       const that = this;
       this._onChange &&
         (editor.onChange = function (...args) {
-          if (this !== editor) that.onChange(args[0]);
+          if (this !== editor) {
+            // console.log('that.onChange');
+            that.onChange(args[0]);
+          }
           that._onChange.apply(editor, args);
           that.editorState = args[0];
           if (that._waitUpdateTarget) {
@@ -240,6 +237,7 @@ export class DraftBinding {
           editorState !== prevProps.editorState
         ) {
           that.onChange(editorState);
+          // console.log('componentDidUpdate.onChange');
           if (that._waitUpdateTarget) {
             that._lock = false;
             that.muxSetRaw.call(that, that._waitUpdateTarget);
@@ -346,9 +344,10 @@ export class DraftBinding {
     this._update &&
       this.draftEditor &&
       (this.draftEditor.update = this._update);
-    this._onChange &&
-      this.draftEditor &&
-      (this.draftEditor.onChange = this._onChange);
+    if (this._onChange) {
+      this.draftEditor && (this.draftEditor.onChange = this._onChange);
+      Reflect.deleteProperty(this.draftEditor, 'componentDidUpdate');
+    }
     this.cancel?.();
     this.rawYmap && this.rawYmap.unobserveDeep(this.onObserveDeep);
     if (this.awareness !== null) {
