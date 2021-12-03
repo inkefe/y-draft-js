@@ -48,7 +48,13 @@ const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
 
 export class DraftBinding {
   constructor(opts) {
-    const { ymap, rawPath: _rawPath, editor, provider, parmas } = opts;
+    const {
+      ymap,
+      rawPath: _rawPath,
+      editor,
+      provider,
+      updatable = true,
+    } = opts;
     this.version = VERSION;
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
@@ -85,7 +91,9 @@ export class DraftBinding {
     //   editor._onSelect(e)
     //   this._onSelect(e)
     // }
-    this.onObserveDeep = (events, isupate) => {
+    this.onObserveDeep = events => {
+      if (!this._updatable) return (this._stopUpdateEvents = events);
+      this._stopUpdateEvents = null;
       let currentTarget = null;
       const originOrpId = events[0].currentTarget.get(CHANGE_CLIENT);
       if (this.oprID === originOrpId) return;
@@ -152,7 +160,15 @@ export class DraftBinding {
         }
       );
     this.bindEditor(editor);
+    this._updatable = !!updatable;
   }
+
+  setUpdatable = val => {
+    this._updatable = !!val;
+    if (!!val && this._stopUpdateEvents) {
+      this.onObserveDeep(this._stopUpdateEvents);
+    }
+  };
 
   forceRefresh = () => {
     const raw = rbw2raw(this.rawYmap.toJSON());
