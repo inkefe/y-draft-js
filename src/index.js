@@ -126,6 +126,7 @@ export class DraftBinding {
           // console.log('this.onChange');
           const raw = transRaw(convertToRaw(editorState.getCurrentContent()));
           if (!this.value) return (this.value = raw);
+          if (!this._updatable) return;
           const selection = editorState.getSelection();
           const allowUndo =
             this.editorState.allowUndo ?? this.editorState.getAllowUndo();
