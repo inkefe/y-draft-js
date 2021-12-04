@@ -37,8 +37,8 @@ const getKeyByEntityData = entityData => {
       return `COMMENT-${Object.values(data)
         .map(i => i.key)
         .join('-')}`;
-    // case 'OKR':
-    //   return `OKR-${data.key}`
+    case 'LINK':
+      return `LINK-${data.key || data.url}`;
     // case 'TABLE':
     //   return `OKR-${data.key}`
     case 'mention':
@@ -70,6 +70,19 @@ const entityArray2Map = arr => {
         },
       };
       entity[`${data.mention.id}-${data.key || data.mention.name}`] = data;
+      entityRange[key] = 1;
+      return;
+    }
+    if (type === 'LINK') {
+      rangeMap[key] = {
+        length: formatStringLen(item.length),
+        offset: formatStringLen(item.offset),
+        key: {
+          ...entityData,
+          data: `link-${data.key || data.url}`,
+        },
+      };
+      entity[`link-${data.key || data.url}`] = data;
       entityRange[key] = 1;
       return;
     }
@@ -119,6 +132,16 @@ const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
     const { type, data } = enityRange.key;
     if (type === 'mention') {
       // enityRange.data = entityPool[data]
+      target = {
+        offset: enityRange.offset.length,
+        length: enityRange.length.length,
+        key: {
+          ...enityRange.key,
+          data: entityPool[data],
+        },
+      };
+    }
+    if (type === 'LINK') {
       target = {
         offset: enityRange.offset.length,
         length: enityRange.length.length,

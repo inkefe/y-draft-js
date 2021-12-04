@@ -1,5 +1,6 @@
 import * as Y from 'yjs';
 import Dmp from 'diff-match-patch';
+import _isEmpty from 'lodash/isEmpty';
 import { SelectionState, genKey } from 'draft-js';
 import { raw2rbw } from './diff';
 
@@ -35,11 +36,12 @@ export function objToArray(obj) {
 
 const transRaw = raw => {
   if (!raw) return raw;
-  const reg = /,"(data|entityMap)":({}|\[\])/g;
-  const res = JSON.parse(
-    JSON.stringify(raw).replace(reg, (_, $1) => `,"${$1}":{}`)
-  );
-  return res;
+  const { blocks, entityMap } = raw;
+  if (_isEmpty(entityMap)) raw.entityMap = {};
+  blocks.forEach(block => {
+    if (_isEmpty(block.data)) block.data = {};
+  });
+  return raw;
 };
 // 对方法进行封装，防止内部报错
 export const tryCatchFunc = (fn, msg) =>
