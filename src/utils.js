@@ -4,7 +4,7 @@ import _isEmpty from 'lodash/isEmpty';
 import { SelectionState, genKey } from 'draft-js';
 import { raw2rbw } from './diff';
 
-const getRaw = text => ({
+export const getRaw = text => ({
   blocks: [
     {
       key: genKey(),

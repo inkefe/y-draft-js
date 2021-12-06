@@ -1,7 +1,7 @@
 import Dmp from 'diff-match-patch';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import { DiffPatcher } from 'jsondiffpatch';
-import { transRaw, objToArray } from './utils';
+import { transRaw, objToArray, getRaw } from './utils';
 // eslint-disable-next-line no-extend-native
 Array.prototype.arrayToObj = function () {
   return { ...this };
@@ -217,41 +217,39 @@ const rbw2raw = rbw => {
   const entityMap = {};
   let entityKey = 0;
   const commentMap = new Map();
-  const newBlocks = blocks
-    .map(key => {
-      if (!blockMap[key]) return null;
-      const entityRanges = entityRange2Array(
-        blockMap[key].entityRanges,
-        entityPool,
-        enityRangeMap
-      ).map(entity => {
-        const data = entity.key;
-        let key;
-        if (commentMap.has(data)) {
-          key = commentMap.get(data);
-        } else {
-          key = ++entityKey;
-          commentMap.set(data, key);
-        }
-        entityMap[key] = data;
-        return {
-          ...entity,
-          key,
-        };
-      });
+  const newBlocks = blocks.map(key => {
+    if (!blockMap[key]) return getRaw().blocks[0];
+    const entityRanges = entityRange2Array(
+      blockMap[key].entityRanges,
+      entityPool,
+      enityRangeMap
+    ).map(entity => {
+      const data = entity.key;
+      let key;
+      if (commentMap.has(data)) {
+        key = commentMap.get(data);
+      } else {
+        key = ++entityKey;
+        commentMap.set(data, key);
+      }
+      entityMap[key] = data;
       return {
-        ...blockMap[key],
-        inlineStyleRanges: objToArray(blockMap[key].inlineStyleRanges).map(
-          item => ({
-            ...item,
-            length: item.length?.length || 0,
-            offset: item.offset?.length || 0,
-          })
-        ),
-        entityRanges,
+        ...entity,
+        key,
       };
-    })
-    .filter(Boolean);
+    });
+    return {
+      ...blockMap[key],
+      inlineStyleRanges: objToArray(blockMap[key].inlineStyleRanges).map(
+        item => ({
+          ...item,
+          length: item.length?.length || 0,
+          offset: item.offset?.length || 0,
+        })
+      ),
+      entityRanges,
+    };
+  });
   return {
     blocks: newBlocks,
     entityMap,
