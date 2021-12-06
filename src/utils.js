@@ -4,23 +4,26 @@ import _isEmpty from 'lodash/isEmpty';
 import { SelectionState, genKey } from 'draft-js';
 import { raw2rbw } from './diff';
 
-export const getRaw = text => ({
-  blocks: [
-    {
-      key: genKey(),
-      text,
-      type: 'unstyled',
-      depth: 0,
-      inlineStyleRanges: [],
-      entityRanges: [],
-      data: {},
-    },
-  ],
-  entityMap: {},
-});
+export const getRaw = (texts = '') => {
+  if (!Array.isArray(texts)) texts = [texts];
+  return {
+    blocks: texts.map(text => [
+      {
+        key: genKey(),
+        text,
+        type: 'unstyled',
+        depth: 0,
+        inlineStyleRanges: [],
+        entityRanges: [],
+        data: {},
+      },
+    ]),
+    entityMap: {},
+  };
+};
 // text转RAW, key为xxxx，没有@
 export const stringToRaw = str => {
-  const contentRaw = String(str).split('\n').map(getRaw);
+  const contentRaw = getRaw(String(str).split('\n'));
   return contentRaw;
 };
 // 类数组对象转数组的方法
