@@ -19,6 +19,7 @@ import {
   toRawSharedData,
 } from './utils';
 import { diffRaw, rbw2raw, raw2rbw } from './diff';
+import { isEqual } from 'lodash';
 
 const LOCAL_OPERATIONS = new WeakMap();
 const getRawBySharedData = (rawPath, ymap) => {
@@ -52,7 +53,7 @@ export class DraftBinding {
       provider,
       updatable = true,
     } = opts;
-    this.version = VERSION;
+    // this.version = VERSION;
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
     this.doc = ymap.doc;
@@ -125,17 +126,28 @@ export class DraftBinding {
           if (!this.value) return (this.value = raw);
           if (!this._updatable) return;
           const selection = editorState.getSelection();
+          // console.log(selection.getHasFocus(), selection.getAnchorOffset(), selection.getAnchorKey());
           const allowUndo =
             this.editorState.allowUndo ?? this.editorState.getAllowUndo();
           if (this.shouldAcceptSelection && !selection.isCollapsed()) {
             this.shouldAcceptSelection = false;
           } // 释放控制
-          this.awareness.setLocalStateField('selection', {
+          const selectData = {
             anchorKey: selection.getAnchorKey(),
             anchorOffset: selection.getAnchorOffset(),
             focusKey: selection.getFocusKey(),
             focusOffset: selection.getFocusOffset(),
-            hasFocus: selection.getHasFocus(),
+            // hasFocus: selection.getHasFocus(),
+          };
+          let hasFocus = selection.getHasFocus();
+          if (!isEqual(this.selectData, selectData) && this.selectData) {
+            hasFocus = true;
+          }
+          this.hasFocus = hasFocus;
+          this.selectData = selectData;
+          this.awareness.setLocalStateField('selection', {
+            ...selectData,
+            hasFocus,
           });
           const newJson = JSON.stringify(raw);
           const oldJson = JSON.stringify(this.value);
@@ -168,8 +180,8 @@ export class DraftBinding {
     }
   };
 
-  forceRefresh = () => {
-    const raw = rbw2raw(this.rawYmap.toJSON());
+  forceRefresh = currentTarget => {
+    const raw = rbw2raw(currentTarget.toJSON());
     this.muxSetRaw(raw);
   };
 
@@ -206,12 +218,20 @@ export class DraftBinding {
 
   undo = () => {
     if (!this.undoManager) return;
-    this.undoManager.undo();
+    this.doc.transact(() => {
+      this.oprID = genKey();
+      this.rawYmap.set(CHANGE_CLIENT, this.oprID);
+      this.undoManager.undo();
+    });
   };
 
   redo = () => {
     if (!this.undoManager) return;
-    this.undoManager.redo();
+    this.doc.transact(() => {
+      this.oprID = genKey();
+      this.rawYmap.set(CHANGE_CLIENT, this.oprID);
+      this.undoManager.redo();
+    });
   };
 
   bindEditor = editor => {
@@ -254,7 +274,7 @@ export class DraftBinding {
           // console.log('componentDidUpdate.onChange');
           if (that._waitUpdateTarget) {
             that._lock = false;
-            that.muxSetRaw.call(that, that._waitUpdateTarget);
+            that.muxSetRaw(that._waitUpdateTarget);
           }
         }
         componentDidUpdate.apply(this, [prevProps, prevState]);
@@ -282,22 +302,6 @@ export class DraftBinding {
     );
   };
 
-  // _onSelect = e => {
-  //   const editorState = this.getEditorState()
-  //   const selection = editorState.getSelection()
-  //   let anchor = monacoModel.getOffsetAt(sel.getStartPosition())
-  //   let head = monacoModel.getOffsetAt(sel.getEndPosition())
-  //   if (sel.getDirection() === monaco.SelectionDirection.RTL) {
-  //     const tmp = anchor
-  //     anchor = head
-  //     head = tmp
-  //   }
-  //   this.awareness.setLocalStateField('selection', {
-  //     anchor: Y.createRelativePositionFromTypeIndex(this.ytext, anchor),
-  //     head: Y.createRelativePositionFromTypeIndex(this.ytext, head)
-  //   })
-  // }
-
   getEditorState = () => {
     return this.editorState || this.draftEditor.props.editorState;
   };
@@ -310,7 +314,7 @@ export class DraftBinding {
     const newEditorState = EditorState.createWithContent(convertFromRaw(raw));
     newEditorState.allowUndo = false;
     const isCollapsed = selectionState.isCollapsed();
-    if (!selectionState.getHasFocus() && isCollapsed) {
+    if (!this.hasFocus && isCollapsed) {
       this.editorState = newEditorState;
       this.value = raw;
       return _onChange.call(this.draftEditor, this.editorState);

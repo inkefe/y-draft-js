@@ -214,7 +214,10 @@ const getNewSelection = (
       oldBlockArray[oldBlockKeys.indexOf(newParmas.anchorKey)].text;
     const anchorDiff = getStringDiffArray(oldAnchorText, anchorText);
     // console.log(anchorDiff, start);
-    newParmas.anchorOffset = diffIndex(anchorDiff, start, !isCollapsed);
+    // const needFlow = !isCollapsed || !isUndo
+    const needFlow =
+      !isCollapsed || oldAnchorText.length - anchorText.length > 0;
+    newParmas.anchorOffset = diffIndex(anchorDiff, start, needFlow);
     if (startKey === endKey) {
       newParmas.focusOffset = isCollapsed
         ? newParmas.anchorOffset

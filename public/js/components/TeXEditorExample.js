@@ -149,7 +149,7 @@ class TeXEditorExample extends React.Component {
     const cmd = getDefaultKeyBinding(e);
     if (cmd === 'undo') return 'y-draft-undo';
     if (cmd === 'redo') return 'y-draft-redo';
-    return cmd;
+    // return cmd;
   }
 
   mockInsertText = () => {
