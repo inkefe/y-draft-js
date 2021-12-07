@@ -53,7 +53,7 @@ export class DraftBinding {
       provider,
       updatable = true,
     } = opts;
-    // this.version = VERSION;
+    this.version = VERSION;
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
     this.doc = ymap.doc;
@@ -137,18 +137,9 @@ export class DraftBinding {
             anchorOffset: selection.getAnchorOffset(),
             focusKey: selection.getFocusKey(),
             focusOffset: selection.getFocusOffset(),
-            // hasFocus: selection.getHasFocus(),
+            hasFocus: selection.getHasFocus(),
           };
-          let hasFocus = selection.getHasFocus();
-          if (!isEqual(this.selectData, selectData) && this.selectData) {
-            hasFocus = true;
-          }
-          this.hasFocus = hasFocus;
-          this.selectData = selectData;
-          this.awareness.setLocalStateField('selection', {
-            ...selectData,
-            hasFocus,
-          });
+          this.awareness.setLocalStateField('selection', selectData);
           const newJson = JSON.stringify(raw);
           const oldJson = JSON.stringify(this.value);
           if (oldJson === newJson || !this.rawYmap) return; // console.log(newJson, oldJson)
@@ -252,13 +243,18 @@ export class DraftBinding {
       const componentDidUpdate = editor.componentDidUpdate; // listen to changes
       const that = this;
       this._onChange &&
-        (editor.onChange = function (...args) {
+        (editor.onChange = function (editorState) {
+          if (
+            that.editorState === editorState ||
+            (that._lockFocus && !editorState.getSelection().getHasFocus())
+          )
+            return (that._lockFocus = false);
+          that._lockFocus = false;
           if (this !== editor) {
-            // console.log('that.onChange');
-            that.onChange(args[0]);
+            that.onChange(editorState);
           }
-          that._onChange.apply(editor, args);
-          that.editorState = args[0];
+          that._onChange.apply(editor, [editorState]);
+          that.editorState = editorState;
           if (that._waitUpdateTarget) {
             that._lock = false;
             that.muxSetRaw(that._waitUpdateTarget);
@@ -270,6 +266,7 @@ export class DraftBinding {
           that.editorState !== editorState &&
           editorState !== prevProps.editorState
         ) {
+          editorState;
           that.onChange(editorState);
           // console.log('componentDidUpdate.onChange');
           if (that._waitUpdateTarget) {
@@ -314,7 +311,7 @@ export class DraftBinding {
     const newEditorState = EditorState.createWithContent(convertFromRaw(raw));
     newEditorState.allowUndo = false;
     const isCollapsed = selectionState.isCollapsed();
-    if (!this.hasFocus && isCollapsed) {
+    if (!selectionState.getHasFocus() && isCollapsed) {
       this.editorState = newEditorState;
       this.value = raw;
       return _onChange.call(this.draftEditor, this.editorState);
@@ -344,6 +341,7 @@ export class DraftBinding {
             : 'forceSelection'
         ](newEditorState, newSelection)
       : newEditorState;
+    this._lockFocus = true;
     this.value = raw;
     this.editorState.allowUndo = false;
     _onChange.call(this.draftEditor, this.editorState);
