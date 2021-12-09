@@ -8,6 +8,7 @@ import {
   EditorState,
   genKey,
   getDefaultKeyBinding,
+  SelectionState,
 } from 'draft-js';
 import {
   transRaw,
@@ -121,7 +122,6 @@ export class DraftBinding {
       this.mutex(
         () => {
           this.editorState = editorState;
-          // console.log('this.onChange');
           const raw = transRaw(convertToRaw(editorState.getCurrentContent()));
           if (!this.value) return (this.value = raw);
           if (!this._updatable) return;
@@ -244,11 +244,16 @@ export class DraftBinding {
       const that = this;
       this._onChange &&
         (editor.onChange = function (editorState) {
-          if (
-            that.editorState === editorState ||
-            (that._lockFocus && !editorState.getSelection().getHasFocus())
-          )
-            return (that._lockFocus = false);
+          if (that.editorState === editorState) {
+            if (that._lockFocus) that._lockFocus = false;
+            return;
+          }
+          if (that._lockFocus) {
+            editorState = EditorState.forceSelection(
+              editorState,
+              that.newSelection
+            );
+          }
           that._lockFocus = false;
           if (this !== editor) {
             that.onChange(editorState);
@@ -311,11 +316,12 @@ export class DraftBinding {
     const newEditorState = EditorState.createWithContent(convertFromRaw(raw));
     newEditorState.allowUndo = false;
     const isCollapsed = selectionState.isCollapsed();
-    if (!selectionState.getHasFocus() && isCollapsed) {
-      this.editorState = newEditorState;
-      this.value = raw;
-      return _onChange.call(this.draftEditor, this.editorState);
-    }
+    // console.log(selectionState.getHasFocus(), 'selectionState')
+    // if (!selectionState.getHasFocus() && isCollapsed) {
+    //   this.editorState = newEditorState;
+    //   this.value = raw;
+    //   return _onChange.call(this.draftEditor, this.editorState);
+    // }
     this.setStateAndSelection(_onChange, newEditorState, isCollapsed, raw);
   };
 
@@ -327,11 +333,15 @@ export class DraftBinding {
     const endKey = selectionState.getEndKey();
     const start = selectionState.getStartOffset();
     const end = selectionState.getEndOffset();
+    const hasFocus = selectionState.getHasFocus();
+
     const newSelection = getNewSelection(
-      { startKey, endKey, start, end },
+      { startKey, endKey, start, end, hasFocus },
       raw,
       contentState
     );
+
+    this.newSelection = newSelection;
     // this.localSelectionState = newSelection
     // console.log(this.shouldAcceptSelection);
     this.editorState = newSelection
@@ -344,6 +354,9 @@ export class DraftBinding {
     this._lockFocus = true;
     this.value = raw;
     this.editorState.allowUndo = false;
+    // const now = Date.now()
+    // console.log(now - this.now)
+    // this.now = now
     _onChange.call(this.draftEditor, this.editorState);
   };
 

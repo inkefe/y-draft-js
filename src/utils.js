@@ -93,12 +93,12 @@ export const rawToText = raw => {
 };
 
 const getNewSelection = (
-  { startKey, endKey, start, end },
+  { startKey, endKey, start, end, hasFocus },
   raw,
   contentState
 ) => {
   const oldBlockArray = contentState.getBlocksAsArray();
-  const newParmas = { hasFocus: true };
+  const newParmas = { hasFocus };
   const isCollapsed = startKey === endKey && start === end;
   const { blocks } = raw;
   if (blocks.length === 0) return;
@@ -113,7 +113,7 @@ const getNewSelection = (
       focusKey: endKey,
       anchorOffset: start,
       focusOffset: end,
-      hasFocus: true,
+      hasFocus,
     });
   }
   const blockKeys = blocks.map(block => block.key);

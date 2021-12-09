@@ -156,7 +156,7 @@ class TeXEditorExample extends React.Component {
     const { isMock } = this.state;
     this.setState({ isMock: !isMock });
     if (!isMock) {
-      this.timer = window.setInterval(this.autoInsertText, 3000);
+      this.timer = window.setInterval(this.autoInsertText, 50);
     } else {
       window.clearInterval(this.timer);
       this.timer = null;
