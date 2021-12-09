@@ -13,7 +13,6 @@ import {
   toRawSharedData,
 } from './utils';
 import { diffRaw, rbw2raw, raw2rbw } from './diff';
-import { isEqual } from 'lodash';
 
 const LOCAL_OPERATIONS = new WeakMap();
 const getRawBySharedData = (rawPath, ymap) => {
