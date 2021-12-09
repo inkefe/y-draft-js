@@ -2,14 +2,7 @@
 // import invariant from 'tiny-invariant';
 import * as Y from 'yjs';
 // import { Awareness } from 'y-protocols/awareness.js' // eslint-disable-line
-import {
-  convertFromRaw,
-  convertToRaw,
-  EditorState,
-  genKey,
-  getDefaultKeyBinding,
-  SelectionState,
-} from 'draft-js';
+import { convertFromRaw, convertToRaw, EditorState, genKey } from 'draft-js';
 import {
   transRaw,
   getNewSelection,

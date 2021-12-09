@@ -104,9 +104,8 @@ const getNewSelection = (
   if (blocks.length === 0) return;
   const editorText = rawToText(raw);
   const oldEditorText = contentState.getPlainText();
-  const textDiff = getStringDiffArray(oldEditorText, editorText);
   // console.log(startKey, endKey, start, end);
-  if (textDiff.length === 1 && textDiff[0][0] === 0) {
+  if (oldEditorText === editorText) {
     // 文本内容没有变化，保留原来的选择状态
     return new SelectionState({
       anchorKey: startKey,

@@ -1,6 +1,6 @@
 {
   "name": "y-draft-js",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Draft-js editor bindings for Yjs",
   "private": false,
   "browser": "./lib/index.esm.js",
