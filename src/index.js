@@ -263,7 +263,6 @@ export class DraftBinding {
           that.editorState !== editorState &&
           editorState !== prevProps.editorState
         ) {
-          editorState;
           that.onChange(editorState);
           // console.log('componentDidUpdate.onChange');
           if (that._waitUpdateTarget) {
