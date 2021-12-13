@@ -481,9 +481,13 @@ const applyYDocOp = (opr, ymap) => {
     // }
   }
 };
-const pathTargeMap = {};
+const _pathTargeMap = new WeakMap();
 // 获取指定路径的数据，如果有值则用回调返回，如果没有则自动监听到目标值出现, 并且持续监听目标路径下的y对象，一旦被更改成另一个对象也会执行回调，并返回的cancle方法来取消监听
 export const onTargetSync = (path, ymap, cb) => {
+  const targetMap = _pathTargeMap.has(ymap)
+    ? _pathTargeMap.get(ymap) || {}
+    : {};
+  if (!_pathTargeMap.has(ymap)) _pathTargeMap.set(ymap, targetMap);
   if (!ymap) return console.warn('ymap is undefined');
   if (!cb) return console.warn('callback is necessary in onTargetSync');
   Array.isArray(path) || (path = [path]);
@@ -492,17 +496,17 @@ export const onTargetSync = (path, ymap, cb) => {
     cb(target);
   }
   const pathKey = path.join('.');
-  pathTargeMap[pathKey] = target;
+  targetMap[pathKey] = target;
   function ob(e) {
     const target = getTargetByPath(path, ymap, true);
     if (!target) return; // 等待目标字段的内容出现
-    if (pathTargeMap[pathKey] === target) return;
+    if (targetMap[pathKey] === target) return;
     cb(target);
-    pathTargeMap[pathKey] = target;
+    targetMap[pathKey] = target;
   }
   ymap.observeDeep(ob);
   return () => {
-    delete pathTargeMap[pathKey];
+    delete targetMap[pathKey];
     ymap.unobserveDeep(ob);
   };
 };
