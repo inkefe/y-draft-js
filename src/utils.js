@@ -7,23 +7,21 @@ import { raw2rbw } from './diff';
 export const getRaw = (texts = '') => {
   if (!Array.isArray(texts)) texts = [texts];
   return {
-    blocks: texts.map(text => [
-      {
-        key: genKey(),
-        text,
-        type: 'unstyled',
-        depth: 0,
-        inlineStyleRanges: [],
-        entityRanges: [],
-        data: {},
-      },
-    ]),
+    blocks: texts.map(text => ({
+      key: genKey(),
+      text: text || '',
+      type: 'unstyled',
+      depth: 0,
+      inlineStyleRanges: [],
+      entityRanges: [],
+      data: {},
+    })),
     entityMap: {},
   };
 };
 // text转RAW, key为xxxx，没有@
 export const stringToRaw = str => {
-  const contentRaw = getRaw(String(str).split('\n'));
+  const contentRaw = getRaw(String(str || '').split('\n'));
   return contentRaw;
 };
 // 类数组对象转数组的方法

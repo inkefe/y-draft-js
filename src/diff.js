@@ -30,6 +30,7 @@ const formatStringLen = (length, char = '1') => {
 
 const getKeyByEntityData = entityData => {
   const { type, data } = entityData;
+  if (!data) return '';
   switch (
     type // 保证在同一行，不同类型的entity的key不重复
   ) {
@@ -60,7 +61,7 @@ const entityArray2Map = arr => {
     const { type, data } = entityData;
     const key = getKeyByEntityData(entityData);
     // key = rangeMap[key] ? `${key}-0` : key
-    if (type === 'mention') {
+    if (type === 'mention' && key) {
       rangeMap[key] = {
         length: formatStringLen(item.length),
         offset: formatStringLen(item.offset),
@@ -73,7 +74,7 @@ const entityArray2Map = arr => {
       entityRange[key] = 1;
       return;
     }
-    if (type === 'LINK') {
+    if (type === 'LINK' && key) {
       rangeMap[key] = {
         length: formatStringLen(item.length),
         offset: formatStringLen(item.offset),
@@ -86,7 +87,7 @@ const entityArray2Map = arr => {
       entityRange[key] = 1;
       return;
     }
-    if (type === 'COMMENT') {
+    if (type === 'COMMENT' && key) {
       const dataKey = {};
       let commentkey = key;
       let i = 1;
@@ -130,7 +131,7 @@ const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
     const enityRange = enityRangeMap[index] || entityRanges[index];
     if (!enityRange?.key) continue;
     const { type, data } = enityRange.key;
-    if (type === 'mention') {
+    if (type === 'mention' && data) {
       // enityRange.data = entityPool[data]
       target = {
         offset: enityRange.offset.length,
@@ -141,7 +142,7 @@ const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
         },
       };
     }
-    if (type === 'LINK') {
+    if (type === 'LINK' && data) {
       target = {
         offset: enityRange.offset.length,
         length: enityRange.length.length,
@@ -151,7 +152,7 @@ const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
         },
       };
     }
-    if (type === 'COMMENT') {
+    if (type === 'COMMENT' && data) {
       const comments = {};
       Object.keys(data).forEach((key, i) => {
         comments[i] = entityPool[key];
