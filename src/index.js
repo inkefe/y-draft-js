@@ -307,11 +307,11 @@ export class DraftBinding {
     newEditorState.allowUndo = false;
     const isCollapsed = selectionState.isCollapsed();
     // console.log(selectionState.getHasFocus(), 'selectionState')
-    // if (!selectionState.getHasFocus() && isCollapsed) {
-    //   this.editorState = newEditorState;
-    //   this.value = raw;
-    //   return _onChange.call(this.draftEditor, this.editorState);
-    // }
+    if (!selectionState.getHasFocus() && isCollapsed) {
+      this.editorState = newEditorState;
+      this.value = raw;
+      return _onChange.call(this.draftEditor, this.editorState);
+    }
     this.setStateAndSelection(_onChange, newEditorState, isCollapsed, raw);
   };
 
