@@ -96,7 +96,7 @@ myKeyBindingFn(e) {
   const cmd = getDefaultKeyBinding(e);
   if (cmd === 'undo') return 'y-draft-undo';
   if (cmd === 'redo') return 'y-draft-redo';
-  return cmd;
+  if (cmd) return cmd;
 }
 ```
 

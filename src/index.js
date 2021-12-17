@@ -109,7 +109,6 @@ export class DraftBinding {
       : (this.cancel = onTargetSync(this.rawPath, ymap, rawYmap => {
           this.listenTargetYmap(rawYmap);
         }));
-
     this.onChange = editorState =>
       this.mutex(
         () => {
@@ -134,8 +133,8 @@ export class DraftBinding {
           this.awareness.setLocalStateField('selection', selectData);
           const newJson = JSON.stringify(raw);
           const oldJson = JSON.stringify(this.value);
-          if (oldJson === newJson || !this.rawYmap) return; // console.log(newJson, oldJson)
           this.rawYmap = getTargetByPath(this.rawPath, this.ymap);
+          if (oldJson === newJson || !this.rawYmap) return; // console.log(newJson, oldJson)
           const delta = diffRaw(this.value, raw);
           changeYmapByDelta(
             delta,
@@ -187,16 +186,16 @@ export class DraftBinding {
 
   listenTargetYmap = rawYmap => {
     this.rawYmap = rawYmap;
-    this.oprID = rawYmap.get(CHANGE_CLIENT);
+    this.oprID = this.rawYmap.get(CHANGE_CLIENT);
     if (!this.oprID) {
       this.oprID = genKey();
-      rawYmap.set(CHANGE_CLIENT, this.oprID);
+      this.rawYmap.set(CHANGE_CLIENT, this.oprID);
     }
     this.undoManager = new Y.UndoManager(this.rawYmap, {
       trackedOrigins: this.trackedSet,
     });
-    this.value = rbw2raw(rawYmap.toJSON());
-    this.onObserveDeep && rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
+    this.value = rbw2raw(this.rawYmap.toJSON());
+    this.onObserveDeep && this.rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
   };
 
   undo = () => {
@@ -355,7 +354,7 @@ export class DraftBinding {
     this.shouldAcceptSelection = true;
   };
 
-  destroy() {
+  destroy = () => {
     // console.warn('y-darf-js is destoryed');
     this.getEditorContainer()?.removeEventListener(
       'mousedown',
@@ -374,5 +373,5 @@ export class DraftBinding {
       // @ts-ignore
       this.awareness.off('change', this.rerenderDecorations);
     }
-  }
+  };
 }
