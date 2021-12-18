@@ -52,7 +52,7 @@ const getKeyByEntityData = entityData => {
       return type;
   }
 };
-const entityArray2Map = arr => {
+const entityArray2Map = (arr, globalRangeMap) => {
   const entityRange = {};
   const entity = {};
   const rangeMap = {};
@@ -91,7 +91,7 @@ const entityArray2Map = arr => {
       const dataKey = {};
       let commentkey = key;
       let i = 1;
-      while (rangeMap[commentkey]) {
+      while (globalRangeMap[commentkey]) {
         commentkey = `${key}-${i++}`;
       }
       entityRange[commentkey] = 1;
@@ -99,7 +99,7 @@ const entityArray2Map = arr => {
         entity[com.key] = com;
         dataKey[com.key] = 1;
       });
-      rangeMap[commentkey] = {
+      rangeMap[commentkey] = globalRangeMap[commentkey] = {
         length: formatStringLen(item.length),
         offset: formatStringLen(item.offset),
         key: {
@@ -180,6 +180,7 @@ const raw2rbw = raw => {
   const blockMap = {};
   let entityPool = {}; // mention和comment的映射的属性池
   let enityRangeMap = {};
+  const globalRangeMap = {};
 
   const rbw = {
     blocks: blocks.map(item => {
@@ -188,8 +189,10 @@ const raw2rbw = raw => {
         ...enti,
         key: entityMap[enti.key],
       }));
-      const { entityRange, entity, rangeMap } =
-        entityArray2Map(newEntityRanges);
+      const { entityRange, entity, rangeMap } = entityArray2Map(
+        newEntityRanges,
+        globalRangeMap
+      );
       entityPool = Object.assign(entityPool, entity);
       enityRangeMap = Object.assign(enityRangeMap, rangeMap);
       blockMap[item.key] = {

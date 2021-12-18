@@ -503,7 +503,7 @@ export const onTargetSync = (path, ymap, cb) => {
   function ob(e) {
     const target = getTargetByPath(path, e[0].currentTarget, true);
     if (!target) return; // 等待目标字段的内容出现
-    if (targetMap[pathKey].target === target) return;
+    if (targetMap[pathKey]?.target === target) return;
     targetMap[pathKey].target = target;
     targetMap[pathKey].callBacks.forEach(fn => fn(target));
   }
