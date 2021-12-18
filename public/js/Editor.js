@@ -41,6 +41,7 @@ export default function Editor() {
       editor: editorRef.current,
       provider,
       parmas,
+      debug: true,
     });
     setDraftBind(draftBind);
     window.ymap = ymap;

@@ -45,7 +45,9 @@ export class DraftBinding {
       editor,
       provider,
       updatable = true,
+      debug,
     } = opts;
+    this.log = debug ? console.log : () => {};
     this.version = VERSION;
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
@@ -70,18 +72,6 @@ export class DraftBinding {
       }
     };
     this.rawPath = rawPath;
-    // console.log(
-    //   'DraftBinding',
-    //   opts,
-
-    //   getTargetByPath(this.rawPath, ymap),
-    //   editor,
-    //   provider
-    // );
-    // editor._onSelect = e => {
-    //   editor._onSelect(e)
-    //   this._onSelect(e)
-    // }
     this.onObserveDeep = events => {
       if (!this._updatable) return (this._stopUpdateEvents = events);
       this._stopUpdateEvents = null;
@@ -96,6 +86,7 @@ export class DraftBinding {
           this.oprID = originOrpId;
         }
       });
+      this.log('exe :[onObserveDeep]', !!currentTarget, this.rawPath.join('.'));
       currentTarget && this.forceRefresh(currentTarget);
     };
 
@@ -195,7 +186,8 @@ export class DraftBinding {
       trackedOrigins: this.trackedSet,
     });
     this.value = rbw2raw(this.rawYmap.toJSON());
-    this.onObserveDeep && this.rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
+    this.log('on :[onObserveDeep]', rawYmap, this.rawPath.join('.'));
+    this.rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
   };
 
   undo = () => {
@@ -330,6 +322,9 @@ export class DraftBinding {
       raw,
       contentState
     );
+    this.log(
+      'NewSelection ->>' + newSelection.serialize().split(',').join(' | ')
+    );
 
     this.newSelection = newSelection;
     // this.localSelectionState = newSelection
@@ -354,12 +349,16 @@ export class DraftBinding {
     this.shouldAcceptSelection = true;
   };
 
+  isDetoryed = false;
+
   destroy = () => {
     // console.warn('y-darf-js is destoryed');
     this.getEditorContainer()?.removeEventListener(
       'mousedown',
       this.releaseSelection
     );
+    this.isDetoryed = true;
+    this.log('destroy: ' + this.rawPath.join('.'));
     this._update &&
       this.draftEditor &&
       (this.draftEditor.update = this._update);

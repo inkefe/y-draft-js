@@ -484,12 +484,12 @@ const applyYDocOp = (opr, ymap) => {
 const _pathTargeMap = new WeakMap();
 // 获取指定路径的数据，如果有值则用回调返回，如果没有则自动监听到目标值出现, 并且持续监听目标路径下的y对象，一旦被更改成另一个对象也会执行回调，并返回的cancle方法来取消监听
 export const onTargetSync = (path, ymap, cb) => {
+  if (!ymap) return console.warn('ymap is undefined');
+  if (!cb) return console.warn('callback is necessary in onTargetSync');
   const targetMap = _pathTargeMap.has(ymap)
     ? _pathTargeMap.get(ymap) || {}
     : {};
   if (!_pathTargeMap.has(ymap)) _pathTargeMap.set(ymap, targetMap);
-  if (!ymap) return console.warn('ymap is undefined');
-  if (!cb) return console.warn('callback is necessary in onTargetSync');
   Array.isArray(path) || (path = [path]);
   const target = getTargetByPath(path, ymap, true);
   if (target) {
