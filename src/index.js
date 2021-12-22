@@ -14,6 +14,7 @@ import {
   toRawSharedData,
 } from './utils';
 import { diffRaw, rbw2raw, raw2rbw } from './diff';
+import _throttle from 'lodash/throttle';
 
 const getRawBySharedData = (rawPath, ymap) => {
   !Array.isArray(rawPath) && (rawPath = [rawPath]);
@@ -36,7 +37,7 @@ export {
   raw2rbw,
 };
 const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
-
+const editorMap = {};
 export class DraftBinding {
   constructor(opts) {
     const {
@@ -108,7 +109,7 @@ export class DraftBinding {
           if (!this.value) return (this.value = raw);
           if (!this._updatable) return;
           const selection = editorState.getSelection();
-          // console.log(selection.getHasFocus(), selection.getAnchorOffset(), selection.getAnchorKey());
+          // console.log(selection.serialize());
           const allowUndo =
             this.editorState.allowUndo ?? this.editorState.getAllowUndo();
           if (this.shouldAcceptSelection && !selection.isCollapsed()) {
@@ -121,7 +122,8 @@ export class DraftBinding {
             focusOffset: selection.getFocusOffset(),
             hasFocus: selection.getHasFocus(),
           };
-          this.awareness.setLocalStateField('selection', selectData);
+          editorMap[this.editorKey] = selectData.hasFocus;
+          this.updateAwareness(selectData);
           const newJson = JSON.stringify(raw);
           const oldJson = JSON.stringify(this.value);
           this.rawYmap = getTargetByPath(this.rawPath, this.ymap);
@@ -145,6 +147,10 @@ export class DraftBinding {
     this.bindEditor(editor);
     this._updatable = !!updatable;
   }
+
+  updateAwareness = _throttle(selectData => {
+    this.awareness.setLocalStateField('selection', selectData);
+  }, 300);
 
   setUpdatable = val => {
     this._updatable = !!val;
@@ -221,12 +227,13 @@ export class DraftBinding {
   bindEditor = editor => {
     // 支持异步绑定编辑器
     if (!editor || this.draftEditor) return;
-    const draftEditor = editor.update ? editor : editor.editor;
+    const draftEditor = editor.update ? editor : editor.editor; // 原始的draft-editor
     if (!draftEditor || !editor.componentDidUpdate) {
       return console.warn('editor must be Draft ref');
     }
     const isPluginEditor = !!editor.onChange;
     this.draftEditor = editor;
+    this.editorKey = draftEditor.getEditorKey();
     this.getEditorContainer()?.addEventListener(
       'mousedown',
       this.releaseSelection
@@ -309,7 +316,10 @@ export class DraftBinding {
     newEditorState.allowUndo = false;
     const isCollapsed = selectionState.isCollapsed();
     // console.log(selectionState.getHasFocus(), 'selectionState')
-    if (!selectionState.getHasFocus() && isCollapsed) {
+    if (
+      Object.values(editorMap).filter(Boolean).length > 0 &&
+      !editorMap[this.editorKey]
+    ) {
       this.editorState = newEditorState;
       this.value = raw;
       return _onChange.call(this.draftEditor, this.editorState);
@@ -333,7 +343,8 @@ export class DraftBinding {
       contentState
     );
     this.log(
-      'NewSelection ->>' + newSelection.serialize().split(',').join(' | ')
+      'NewSelection ->>' + newSelection.serialize().split(',').join(' | '),
+      hasFocus
     );
 
     this.newSelection = newSelection;
@@ -376,6 +387,7 @@ export class DraftBinding {
       this.draftEditor && (this.draftEditor.onChange = this._onChange);
       Reflect.deleteProperty(this.draftEditor, 'componentDidUpdate');
     }
+    Reflect.deleteProperty(editorMap, this.editorKey);
     this.cancel?.();
     this.rawYmap && this.rawYmap.unobserveDeep(this.onObserveDeep);
     if (this.awareness !== null) {
