@@ -34,10 +34,12 @@ export function objToArray(obj) {
     ) + 1;
   return Array.from({ ...obj, length }).filter(Boolean);
 }
-
+export const isRaw = raw => {
+  return raw && raw.blocks && raw.entityMap;
+};
 const transRaw = raw => {
   if (!raw) return raw;
-  const { blocks, entityMap } = raw;
+  const { blocks = [], entityMap } = raw;
   if (_isEmpty(entityMap)) raw.entityMap = {};
   blocks.forEach(block => {
     if (_isEmpty(block.data)) block.data = {};
@@ -502,15 +504,21 @@ export const onTargetSync = (path, ymap, cb) => {
   };
   function ob(e) {
     const target = getTargetByPath(path, e[0].currentTarget, true);
-    if (!target) return; // 等待目标字段的内容出现
-    if (targetMap[pathKey]?.target === target) return;
+    if (!target || !targetMap[pathKey] || targetMap[pathKey].target === target)
+      return; // 等待目标字段的内容出现
     targetMap[pathKey].target = target;
     targetMap[pathKey].callBacks.forEach(fn => fn(target));
   }
   ymap.observeDeep(ob);
   return () => {
-    delete targetMap[pathKey];
+    targetMap[pathKey].callBacks.splice(
+      targetMap[pathKey].callBacks.indexOf(cb),
+      1
+    );
     ymap.unobserveDeep(ob);
+    if (targetMap[pathKey].callBacks.length === 0) {
+      delete targetMap[pathKey];
+    }
   };
 };
 export { transRaw, getStringDiffArray, diffIndex, getNewSelection };

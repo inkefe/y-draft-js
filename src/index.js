@@ -5,6 +5,7 @@ import * as Y from 'yjs';
 import { convertFromRaw, convertToRaw, EditorState, genKey } from 'draft-js';
 import {
   transRaw,
+  isRaw,
   getNewSelection,
   changeYmapByDelta,
   toSyncElement,
@@ -14,14 +15,13 @@ import {
 } from './utils';
 import { diffRaw, rbw2raw, raw2rbw } from './diff';
 
-const LOCAL_OPERATIONS = new WeakMap();
 const getRawBySharedData = (rawPath, ymap) => {
   !Array.isArray(rawPath) && (rawPath = [rawPath]);
   const target = getTargetByPath(rawPath, ymap);
   if (!target) return null;
   const rbw = target.toJSON();
   const raw = rbw2raw(rbw);
-  if (!rbw || !rbw.blocks) return rbw;
+  if (!isRaw(raw)) return null;
   return raw;
 };
 
@@ -176,6 +176,17 @@ export class DraftBinding {
   };
 
   listenTargetYmap = rawYmap => {
+    const val = rbw2raw(rawYmap.toJSON());
+    if (isRaw(val)) this.value = val;
+    else {
+      this.log(
+        'rawYmap :[error]',
+        rawYmap.toJSON(),
+        val,
+        this.rawPath.join('.')
+      );
+      return;
+    }
     this.rawYmap = rawYmap;
     this.oprID = this.rawYmap.get(CHANGE_CLIENT);
     if (!this.oprID) {
@@ -185,7 +196,6 @@ export class DraftBinding {
     this.undoManager = new Y.UndoManager(this.rawYmap, {
       trackedOrigins: this.trackedSet,
     });
-    this.value = rbw2raw(this.rawYmap.toJSON());
     this.log('on :[onObserveDeep]', rawYmap, this.rawPath.join('.'));
     this.rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
   };
