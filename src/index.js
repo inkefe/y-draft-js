@@ -125,9 +125,12 @@ export class DraftBinding {
           editorMap[this.editorKey] = selectData.hasFocus;
           this.updateAwareness(selectData);
           const newJson = JSON.stringify(raw);
-          const oldJson = JSON.stringify(this.value);
-          this.rawYmap = getTargetByPath(this.rawPath, this.ymap);
-          if (oldJson === newJson || !this.rawYmap) return; // console.log(newJson, oldJson)
+          const rawYmap = getTargetByPath(this.rawPath, this.ymap);
+          if (!rawYmap) return;
+          if (this.rawYmap !== rawYmap && !this.listenTargetYmap(rawYmap)) {
+            return;
+          }
+          if (this.oldJson === newJson) return; // console.log(newJson, oldJson)
           const delta = diffRaw(this.value, raw);
           changeYmapByDelta(
             delta,
@@ -138,6 +141,7 @@ export class DraftBinding {
             },
             allowUndo ? this.clientID : null
           );
+          this.oldJson = newJson;
           this.value = JSON.parse(newJson);
         },
         () => {
@@ -183,8 +187,10 @@ export class DraftBinding {
 
   listenTargetYmap = rawYmap => {
     const val = rbw2raw(rawYmap.toJSON());
-    if (isRaw(val)) this.value = val;
-    else {
+    if (isRaw(val)) {
+      this.value = val;
+      this.oldJson = JSON.stringify(val);
+    } else {
       this.log(
         'rawYmap :[error]',
         rawYmap.toJSON(),
@@ -193,6 +199,7 @@ export class DraftBinding {
       );
       return;
     }
+    this.rawYmap?.unobserveDeep(this.onObserveDeep);
     this.rawYmap = rawYmap;
     this.oprID = this.rawYmap.get(CHANGE_CLIENT);
     if (!this.oprID) {
@@ -204,6 +211,7 @@ export class DraftBinding {
     });
     this.log('on :[onObserveDeep]', rawYmap, this.rawPath.join('.'));
     this.rawYmap.observeDeep(this.onObserveDeep); // observeDeep this editor's raw
+    return true;
   };
 
   undo = () => {
@@ -309,7 +317,7 @@ export class DraftBinding {
 
   setStateByRaw = raw => {
     const _onChange = this._update || this._onChange;
-    if (!raw || !raw.blocks || !_onChange) return;
+    if (!isRaw(raw) || !_onChange) return;
     const editorState = this.getEditorState();
     const selectionState = editorState.getSelection();
     const newEditorState = EditorState.createWithContent(convertFromRaw(raw));
@@ -322,6 +330,7 @@ export class DraftBinding {
     ) {
       this.editorState = newEditorState;
       this.value = raw;
+      this.oldJson = JSON.stringify(raw);
       return _onChange.call(this.draftEditor, this.editorState);
     }
     this.setStateAndSelection(_onChange, newEditorState, isCollapsed, raw);
@@ -359,6 +368,7 @@ export class DraftBinding {
       : newEditorState;
     this._lockFocus = true;
     this.value = raw;
+    this.oldJson = JSON.stringify(raw);
     this.editorState.allowUndo = false;
     // const now = Date.now()
     // console.log(now - this.now)
