@@ -107,21 +107,15 @@ export class DraftBinding {
           this.editorState = editorState;
           const raw = transRaw(convertToRaw(editorState.getCurrentContent()));
           if (!this.value) return (this.value = raw);
-          if (!this._updatable) return;
           const selection = editorState.getSelection();
-          // console.log(selection.serialize());
+          const selectData = this.getSectionData(selection);
+          if (!this._updatable) return;
+          // console.log(selection.serialize(), selectData, this.isCompositeMode());
           const allowUndo =
             this.editorState.allowUndo ?? this.editorState.getAllowUndo();
           if (this.shouldAcceptSelection && !selection.isCollapsed()) {
             this.shouldAcceptSelection = false;
           } // 释放控制
-          const selectData = {
-            anchorKey: selection.getAnchorKey(),
-            anchorOffset: selection.getAnchorOffset(),
-            focusKey: selection.getFocusKey(),
-            focusOffset: selection.getFocusOffset(),
-            hasFocus: selection.getHasFocus(),
-          };
           editorMap[this.editorKey] = selectData.hasFocus;
           this.updateAwareness(selectData);
           const newJson = JSON.stringify(raw);
@@ -151,6 +145,20 @@ export class DraftBinding {
     this.bindEditor(editor);
     this._updatable = !!updatable;
   }
+
+  getSectionData = () => {
+    const selection = this.getEditorState().getSelection();
+    if (this.isCompositeMode() && this.selectData) return this.selectData;
+    this.selectData = {
+      anchorKey: selection.getAnchorKey(),
+      anchorOffset: selection.getAnchorOffset(),
+      focusKey: selection.getFocusKey(),
+      focusOffset: selection.getFocusOffset(),
+      isBackward: selection.getIsBackward(),
+      hasFocus: selection.getHasFocus(),
+    };
+    return this.selectData;
+  };
 
   updateAwareness = _throttle(selectData => {
     this.awareness.setLocalStateField('selection', selectData);
@@ -311,6 +319,8 @@ export class DraftBinding {
     );
   };
 
+  isCompositeMode = () => this.getEditorState().isInCompositionMode();
+
   getEditorState = () => {
     return this.editorState || this.draftEditor.props.editorState;
   };
@@ -320,31 +330,40 @@ export class DraftBinding {
     if (!isRaw(raw) || !_onChange) return;
     const editorState = this.getEditorState();
     const selectionState = editorState.getSelection();
-    const newEditorState = EditorState.createWithContent(convertFromRaw(raw));
+    const newEditorState = EditorState.set(
+      EditorState.createWithContent(convertFromRaw(raw)),
+      { inCompositionMode: this.isCompositeMode() }
+    );
     newEditorState.allowUndo = false;
     const isCollapsed = selectionState.isCollapsed();
     // console.log(selectionState.getHasFocus(), 'selectionState')
-    if (
-      Object.values(editorMap).filter(Boolean).length > 0 &&
-      !editorMap[this.editorKey]
-    ) {
+    const focusLength = Object.values(editorMap).filter(Boolean).length;
+    // console.log(this.isCompositeMode(), 'isCompositeMode');
+    if ((focusLength > 0 && !editorMap[this.editorKey]) || focusLength === 0) {
       this.editorState = newEditorState;
       this.value = raw;
       this.oldJson = JSON.stringify(raw);
-      return _onChange.call(this.draftEditor, this.editorState);
+      return _onChange.call(this.draftEditor, newEditorState);
     }
     this.setStateAndSelection(_onChange, newEditorState, isCollapsed, raw);
   };
 
   setStateAndSelection = (_onChange, newEditorState, isCollapsed, raw) => {
     const editorState = this.getEditorState();
-    const selectionState = editorState.getSelection();
     const contentState = editorState.getCurrentContent();
-    const startKey = selectionState.getStartKey();
-    const endKey = selectionState.getEndKey();
-    const start = selectionState.getStartOffset();
-    const end = selectionState.getEndOffset();
-    const hasFocus = selectionState.getHasFocus();
+    const {
+      anchorKey,
+      focusKey,
+      anchorOffset,
+      focusOffset,
+      isBackward,
+      hasFocus,
+    } = this.selectData || this.getSectionData();
+
+    const startKey = isBackward ? focusKey : anchorKey;
+    const endKey = isBackward ? anchorKey : focusKey;
+    const start = isBackward ? focusOffset : anchorOffset;
+    const end = isBackward ? anchorOffset : focusOffset;
 
     const newSelection = getNewSelection(
       { startKey, endKey, start, end, hasFocus },
@@ -400,9 +419,5 @@ export class DraftBinding {
     Reflect.deleteProperty(editorMap, this.editorKey);
     this.cancel?.();
     this.rawYmap && this.rawYmap.unobserveDeep(this.onObserveDeep);
-    if (this.awareness !== null) {
-      // @ts-ignore
-      this.awareness.off('change', this.rerenderDecorations);
-    }
   };
 }
