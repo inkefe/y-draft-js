@@ -58,6 +58,7 @@ export class DraftBinding {
     this.ymap = ymap;
     this.awareness = provider.awareness;
     this._lock = false;
+    this._updatable = !!updatable;
     this.mutex = (f, g) => {
       if (!this._lock) {
         this._lock = true;
@@ -77,7 +78,7 @@ export class DraftBinding {
       if (!this._updatable) return (this._stopUpdateEvents = events);
       this._stopUpdateEvents = null;
       let currentTarget = null;
-      const originOrpId = events[0].currentTarget.get(CHANGE_CLIENT);
+      const originOrpId = this.rawYmap.get(CHANGE_CLIENT);
       if (this.oprID === originOrpId) return;
       events.forEach(item => {
         const { path } = item;
@@ -88,7 +89,7 @@ export class DraftBinding {
         }
       });
       this.log('exe :[onObserveDeep]', !!currentTarget, this.rawPath.join('.'));
-      currentTarget && this.forceRefresh(currentTarget);
+      currentTarget && this.forceRefresh();
     };
 
     !provider.synced
@@ -143,7 +144,6 @@ export class DraftBinding {
         }
       );
     this.bindEditor(editor);
-    this._updatable = !!updatable;
   }
 
   getSectionData = () => {
@@ -171,8 +171,8 @@ export class DraftBinding {
     }
   };
 
-  forceRefresh = currentTarget => {
-    const raw = rbw2raw(currentTarget.toJSON());
+  forceRefresh = () => {
+    const raw = rbw2raw(this.rawYmap.toJSON());
     this.muxSetRaw(raw);
   };
 
