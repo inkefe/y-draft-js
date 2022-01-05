@@ -59,6 +59,12 @@ export class DraftBinding {
     this.awareness = provider.awareness;
     this._lock = false;
     this._updatable = !!updatable;
+    this.isConnecting = provider.wsconnecting;
+    this.onStatusChange = ({ status }) => {
+      this.isConnecting = status === 'connecting';
+    };
+    provider.on('status', this.onStatusChange);
+
     this.mutex = (f, g) => {
       if (!this._lock) {
         this._lock = true;
@@ -121,7 +127,7 @@ export class DraftBinding {
           this.updateAwareness(selectData);
           const newJson = JSON.stringify(raw);
           const rawYmap = getTargetByPath(this.rawPath, this.ymap);
-          if (!rawYmap) return;
+          if (!rawYmap || this.isConnecting) return;
           if (this.rawYmap !== rawYmap && !this.listenTargetYmap(rawYmap)) {
             return;
           }
@@ -408,6 +414,7 @@ export class DraftBinding {
       this.releaseSelection
     );
     this.isDetoryed = true;
+    provider.off('status', this.onStatusChange);
     this.log('destroy: ' + this.rawPath.join('.'));
     this._update &&
       this.draftEditor &&
