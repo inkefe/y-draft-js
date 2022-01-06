@@ -494,9 +494,6 @@ export const onTargetSync = (path, ymap, cb) => {
   if (!_pathTargeMap.has(ymap)) _pathTargeMap.set(ymap, targetMap);
   Array.isArray(path) || (path = [path]);
   const target = getTargetByPath(path, ymap, true);
-  if (target) {
-    cb(target);
-  }
   const pathKey = path.join('.');
   targetMap[pathKey] = {
     target,
@@ -510,6 +507,9 @@ export const onTargetSync = (path, ymap, cb) => {
     targetMap[pathKey].callBacks.forEach(fn => fn(target));
   }
   ymap.observeDeep(ob);
+  if (target) {
+    setTimeout(() => cb(target), 0);
+  }
   return () => {
     targetMap[pathKey].callBacks.splice(
       targetMap[pathKey].callBacks.indexOf(cb),
