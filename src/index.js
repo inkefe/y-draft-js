@@ -50,6 +50,7 @@ export class DraftBinding {
     } = opts;
     this.log = debug ? console.log : () => {};
     this.version = VERSION;
+    this.provider = provider;
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
     this.doc = ymap.doc;
@@ -414,7 +415,7 @@ export class DraftBinding {
       this.releaseSelection
     );
     this.isDetoryed = true;
-    provider.off('status', this.onStatusChange);
+    this.provider.off('status', this.onStatusChange);
     this.log('destroy: ' + this.rawPath.join('.'));
     this._update &&
       this.draftEditor &&
