@@ -16,7 +16,6 @@ npm install y-draft-js
 
 ```js
 const ydoc = new Y.Doc();
-const ymap = ydoc.getMap(id); // your doc id
 
 const provider = new WebsocketProvider(
   'ws://localhost:1234', // your websockt url
@@ -33,7 +32,7 @@ const provider = new WebsocketProvider(
 ```js
 import { DraftBinding } from 'y-draft-js';
 const draftBind = new DraftBinding({
-  ymap,
+  ydoc,
   rawPath: 'raw', // your draft-js raw path（or [], exp: ['content', 'raw']）
   editor: editorRef.current, // draft-js editor ref , or plugin editor ref, or null(You can bind the editor asynchronously, exp: draftBind.bindEditor(editorRef.current))
   provider,
@@ -135,7 +134,7 @@ const target = getTargetByPath(path, ymap); // get target by ymap path
 4. onTargetSync
 
 ```js
-const cancel = onTargetSync(path, ymap, callback); // The callback is triggered when the listening target has a value or target is replaced (This is useful when you are not sure if the data under the destination path exists)
+const cancel = onTargetSync(path, ydoc, callback); // The callback is triggered when the listening target has a value or target is replaced (This is useful when you are not sure if the data under the destination path exists)
 // cancel the listener when component unmount
 cancel();
 ```

@@ -12,22 +12,45 @@ import {
   getTargetByPath,
   onTargetSync,
   toRawSharedData,
+  getRaw,
 } from './utils';
 import { diffRaw, rbw2raw, raw2rbw } from './diff';
 import _throttle from 'lodash/throttle';
 
-const getRawBySharedData = (rawPath, ymap) => {
+const getRawBySharedData = (rawPath, ydoc) => {
   !Array.isArray(rawPath) && (rawPath = [rawPath]);
-  const target = getTargetByPath(rawPath, ymap);
+  const target = getTargetByPath(rawPath, ydoc);
   if (!target) return null;
-  const rbw = target.toJSON();
-  const raw = rbw2raw(rbw);
-  if (!isRaw(raw)) return null;
+  let rbw = null;
+  let raw = null;
+  try {
+    rbw = target.toJSON();
+    raw = rbw2raw(rbw);
+    if (!isRaw(raw)) return null;
+  } catch (error) {
+    return null;
+  }
   return raw;
 };
-
+const setRawToSharedData = (rawPath, ydoc, raw) => {
+  !Array.isArray(rawPath) && (rawPath = [rawPath]);
+  const target = getTargetByPath(rawPath, ydoc);
+  if (!target) return console.log(`path:${rawPath} is undefined`);
+  const rbw = raw2rbw(raw);
+  ydoc.transact(() => {
+    target.forEach((val, key) => target.delete(key));
+    target.set(CHANGE_CLIENT, genKey());
+    // const rawYmap = toRawSharedData(rbw)
+    Object.entries(rbw).forEach(([key, val]) =>
+      target.set(key, toSyncElement(val))
+    );
+  });
+  console.log(target.toJSON(), 'target.toJSON()');
+  return target;
+};
 export {
   toRawSharedData,
+  setRawToSharedData,
   getRawBySharedData,
   getTargetByPath,
   onTargetSync,
@@ -41,7 +64,7 @@ const editorMap = {};
 export class DraftBinding {
   constructor(opts) {
     const {
-      ymap,
+      ydoc,
       rawPath: _rawPath,
       editor,
       provider,
@@ -53,10 +76,10 @@ export class DraftBinding {
     this.provider = provider;
     let rawPath = _rawPath;
     !Array.isArray(rawPath) && (rawPath = [rawPath]);
-    this.doc = ymap.doc;
+    ydoc.getMap(rawPath[0]);
+    this.doc = ydoc;
     this.clientID = this.doc.clientID;
     this.trackedSet = new Set([this.clientID, this]);
-    this.ymap = ymap;
     this.awareness = provider.awareness;
     this._lock = false;
     this._updatable = !!updatable;
@@ -102,11 +125,11 @@ export class DraftBinding {
     !provider.synced
       ? provider.on('sync', isSynced => {
           if (!isSynced) return;
-          this.cancel = onTargetSync(this.rawPath, ymap, rawYmap => {
+          this.cancel = onTargetSync(this.rawPath, ydoc, rawYmap => {
             this.listenTargetYmap(rawYmap);
           });
         })
-      : (this.cancel = onTargetSync(this.rawPath, ymap, rawYmap => {
+      : (this.cancel = onTargetSync(this.rawPath, ydoc, rawYmap => {
           this.listenTargetYmap(rawYmap);
         }));
     this.onChange = editorState =>
@@ -127,7 +150,7 @@ export class DraftBinding {
           editorMap[this.editorKey] = selectData.hasFocus;
           this.updateAwareness(selectData);
           const newJson = JSON.stringify(raw);
-          const rawYmap = getTargetByPath(this.rawPath, this.ymap);
+          const rawYmap = getTargetByPath(this.rawPath, ydoc);
           if (!rawYmap || this.isConnecting) return;
           if (this.rawYmap !== rawYmap && !this.listenTargetYmap(rawYmap)) {
             return;
@@ -206,13 +229,10 @@ export class DraftBinding {
       this.value = val;
       this.oldJson = JSON.stringify(val);
     } else {
-      this.log(
-        'rawYmap :[error]',
-        rawYmap.toJSON(),
-        val,
-        this.rawPath.join('.')
-      );
-      return;
+      this.value = getRaw();
+      this.oldJson = JSON.stringify(val);
+      rawYmap = setRawToSharedData(this.rawPath, this.doc, this.value);
+      this.log('initRaw =>', this.value, this.rawPath.join('.'));
     }
     this.rawYmap?.unobserveDeep(this.onObserveDeep);
     this.rawYmap = rawYmap;

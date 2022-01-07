@@ -483,41 +483,52 @@ const applyYDocOp = (opr, ymap) => {
     // }
   }
 };
-const _pathTargeMap = new WeakMap();
-// 获取指定路径的数据，如果有值则用回调返回，如果没有则自动监听到目标值出现, 并且持续监听目标路径下的y对象，一旦被更改成另一个对象也会执行回调，并返回的cancle方法来取消监听
-export const onTargetSync = (path, ymap, cb) => {
-  if (!ymap) return console.warn('ymap is undefined');
+const _pathTargeDoc = new WeakMap();
+// 获取从ydoc下指定路径的数据，如果有值则用回调返回，如果没有则自动监听到目标值出现, 并且持续监听目标路径下的y对象，一旦被更改成另一个对象也会执行回调，并返回的cancle方法来取消监听
+export const onTargetSync = (path, ydoc, cb, firstType) => {
+  if (!ydoc) return console.warn('ydoc is undefined');
   if (!cb) return console.warn('callback is necessary in onTargetSync');
-  const targetMap = _pathTargeMap.has(ymap)
-    ? _pathTargeMap.get(ymap) || {}
+  const targetDoc = _pathTargeDoc.has(ydoc)
+    ? _pathTargeDoc.get(ydoc) || {}
     : {};
-  if (!_pathTargeMap.has(ymap)) _pathTargeMap.set(ymap, targetMap);
+  if (!_pathTargeDoc.has(ydoc)) _pathTargeDoc.set(ydoc, targetDoc);
   Array.isArray(path) || (path = [path]);
-  const target = getTargetByPath(path, ymap, true);
+  const [fixField, ...subPath] = path;
+  const firstData = ydoc.get(fixField, (firstType = Y.Map));
+  if (subPath.length === 0) {
+    setTimeout(() => cb(firstData), 0);
+    return;
+  }
+  const target = getTargetByPath(subPath, firstData, true);
   const pathKey = path.join('.');
-  targetMap[pathKey] = {
+  targetDoc[pathKey] = {
     target,
-    callBacks: [...(targetMap[pathKey]?.callBacks || []), cb],
+    callBacks: [...(targetDoc[pathKey]?.callBacks || []), cb],
   };
   function ob(e) {
-    const target = getTargetByPath(path, ymap, true);
-    if (!target || !targetMap[pathKey] || targetMap[pathKey].target === target)
-      return; // 等待目标字段的内容出现
-    targetMap[pathKey].target = target;
-    targetMap[pathKey].callBacks.forEach(fn => fn(target));
+    const target = getTargetByPath(subPath, firstData, true);
+    if (
+      !target ||
+      !targetDoc[pathKey] ||
+      targetDoc[pathKey].target === target
+    ) {
+      return;
+    } // 等待目标字段的内容出现
+    targetDoc[pathKey].target = target;
+    targetDoc[pathKey].callBacks.forEach(fn => fn(target));
   }
-  ymap.observeDeep(ob);
+  firstData.observeDeep(ob);
   if (target) {
     setTimeout(() => cb(target), 0);
   }
   return () => {
-    targetMap[pathKey].callBacks.splice(
-      targetMap[pathKey].callBacks.indexOf(cb),
+    targetDoc[pathKey].callBacks.splice(
+      targetDoc[pathKey].callBacks.indexOf(cb),
       1
     );
-    ymap.unobserveDeep(ob);
-    if (targetMap[pathKey].callBacks.length === 0) {
-      delete targetMap[pathKey];
+    firstData.unobserveDeep(ob);
+    if (targetDoc[pathKey].callBacks.length === 0) {
+      delete targetDoc[pathKey];
     }
   };
 };

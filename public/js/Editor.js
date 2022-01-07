@@ -4,7 +4,12 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 // import { IndexeddbPersistence } from 'y-indexeddb'
 // @ts-ignore
-import { DraftBinding, getRawBySharedData, toRawSharedData } from 'y-draft-js';
+import {
+  DraftBinding,
+  getRawBySharedData,
+  toRawSharedData,
+  setRawToSharedData,
+} from 'y-draft-js';
 import { rawContent } from './data/content';
 import TeXEditorExample from './components/TeXEditorExample';
 
@@ -19,24 +24,23 @@ export default function Editor() {
   const [isOnline, setOnlineState] = useState(false);
   const [value, setValue] = useState(null);
   const [draftBind, setDraftBind] = useState(null);
-  const [ymap, provider] = useMemo(() => {
+  const [ydoc, provider] = useMemo(() => {
     const ydoc = new Y.Doc();
-    const ymap = ydoc.getMap(id);
     // const yRaw = ymap.get(contenField)
     // console.log(yRaw);
     // if(!yRaw) {
     //   ymap.set(contenField, toRawSharedData(value))
     // }
-    console.log(ymap, 'ymap');
+    console.log(ydoc, 'ydoc');
     const provider = new WebsocketProvider(`ws://${HOST}:1234`, id, ydoc, {
       connect: false,
     });
-    return [ymap, provider];
+    return [ydoc, provider];
   }, [id]);
 
   useEffect(() => {
     const draftBind = new DraftBinding({
-      ymap,
+      ydoc,
       rawPath: contenField,
       editor: editorRef.current,
       provider,
@@ -44,7 +48,7 @@ export default function Editor() {
       debug: true,
     });
     setDraftBind(draftBind);
-    window.ymap = ymap;
+    window.ydoc = ydoc;
     window.draftBind = draftBind;
     provider.on('status', ({ status }) => {
       setOnlineState(status === 'connected');
@@ -58,16 +62,14 @@ export default function Editor() {
     provider.on('sync', isSynced => {
       console.log('sync', isSynced);
       if (!isSynced) return;
-      console.log(ymap.get(contenField));
-      if (ymap.get(contenField)) {
-        const raw = getRawBySharedData(contenField, ymap);
-        // console.log(ymap.get(contenField).toJSON());
-        console.log(raw);
+      // const ymap = ydoc.get(contenField)
+      const raw = getRawBySharedData(contenField, ydoc);
+      if (raw) {
         setValue(raw);
       } else {
         console.log('initialize');
-        ymap.set(contenField, toRawSharedData(value || rawContent));
-        setValue(value || rawContent);
+        const initRaw = value || rawContent;
+        setRawToSharedData(contenField, ydoc, initRaw);
       }
     });
 
