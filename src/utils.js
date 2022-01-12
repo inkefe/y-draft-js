@@ -443,6 +443,11 @@ const applyYDocOp = (opr, ymap) => {
   const { type, path, action, value, index, length } = opr;
   if (type === 'string') {
     const target = getTargetByPath(path, ymap);
+    if (action === 'insert' && typeof target === 'string') {
+      const field = path.pop();
+      const ydata = getTargetByPath(path, ymap);
+      return ydata.set(field, value);
+    }
     return action === 'insert'
       ? target.insert(index, value)
       : target.delete(index, length);
