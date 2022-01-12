@@ -443,6 +443,7 @@ const applyYDocOp = (opr, ymap) => {
   const { type, path, action, value, index, length } = opr;
   if (type === 'string') {
     const target = getTargetByPath(path, ymap);
+    if (!target && action === 'delete') return;
     if (typeof target === 'string') {
       const field = path.pop();
       const ydata = getTargetByPath(path, ymap);
