@@ -444,7 +444,7 @@ const applyYDocOp = (opr, ymap) => {
   if (type === 'string') {
     const target = getTargetByPath(path, ymap);
     if (!target && action === 'delete') return;
-    if (typeof target === 'string') {
+    if (typeof target === 'string' || !target) {
       const field = path[path.length - 1];
       const ydata = getTargetByPath(path.slice(0, path.length - 1), ymap);
       return action === 'insert'
