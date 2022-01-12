@@ -392,7 +392,9 @@ export function toSyncElement(item) {
     Object.keys(item).forEach(key => {
       mapElement.set(
         key,
-        ingnoreKeys.indexOf(key) >= 0 ? item[key] : toSyncElement(item[key])
+        ingnoreKeys.indexOf(key) >= 0 && typeof item[key] === 'string'
+          ? item[key]
+          : toSyncElement(item[key])
       );
     });
     return mapElement;
