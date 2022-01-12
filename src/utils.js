@@ -374,6 +374,7 @@ export function toRawSharedData(raw) {
   const rbw = raw2rbw(raw);
   return toSyncElement(rbw);
 }
+const ingnoreKeys = ['type', 'key', 'mutability'];
 export function toSyncElement(item) {
   if (typeof item === 'string') {
     const textElement = new Y.Text(item);
@@ -389,7 +390,10 @@ export function toSyncElement(item) {
     const isRaw = item.blocks && item.entityMap && !item.entityPool;
     if (isRaw) return toRawSharedData(item);
     Object.keys(item).forEach(key => {
-      mapElement.set(key, toSyncElement(item[key]));
+      mapElement.set(
+        key,
+        ingnoreKeys.indexOf(key) >= 0 ? item[key] : toSyncElement(item[key])
+      );
     });
     return mapElement;
   }
