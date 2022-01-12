@@ -408,11 +408,12 @@ export const getTargetByPath = (path, target, isSync) => {
         console.warn(
           `Could not find target according to path [${path.join(
             '.'
-          )}], it is recommended that you use 'onTargetSync' to listen for the value of the path`
+          )}], it is recommended that you use 'onTargetSync' to listen for the value of the path`,
+          target
         );
       return t;
     }
-    const res = t.get(key);
+    const res = t.get ? t.get(key) : t[key];
     return res;
   }, target);
 };
