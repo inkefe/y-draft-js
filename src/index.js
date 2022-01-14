@@ -269,12 +269,21 @@ export class DraftBinding {
 
   bindEditor = editor => {
     // 支持异步绑定编辑器
-    if (!editor || this.draftEditor) return;
-    const draftEditor = editor.update ? editor : editor.editor; // 原始的draft-editor
+    if (!editor) return;
+    if (this.draftEditor) {
+      console.warn(
+        '[editor-change] bind other draftEditor, preEditor:',
+        this.draftEditor,
+        'newEditor:',
+        editor
+      );
+    }
+    const draftEditor = editor.update ? editor : editor.getEditorRef(); // 原始的draft-editor
     if (!draftEditor || !editor.componentDidUpdate) {
       return console.warn('editor must be Draft ref');
     }
     const isPluginEditor = !!editor.onChange;
+    this.isPluginEditor = isPluginEditor;
     this.draftEditor = editor;
     this.editorKey = draftEditor.getEditorKey();
     this.getEditorContainer()?.addEventListener(
@@ -355,6 +364,12 @@ export class DraftBinding {
   setStateByRaw = raw => {
     const _onChange = this._update || this._onChange;
     if (!isRaw(raw) || !_onChange) return;
+    if (this.isPluginEditor && !this.draftEditor.getEditorRef()) {
+      return console.warn(
+        'drafjsEditor Can`t be found it, please rebind the editor',
+        this.draftEditor
+      );
+    }
     const editorState = this.getEditorState();
     const selectionState = editorState.getSelection();
     const newEditorState = EditorState.set(
