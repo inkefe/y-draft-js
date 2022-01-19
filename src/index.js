@@ -14,7 +14,7 @@ import {
   toRawSharedData,
   getRaw,
 } from './utils';
-import { diffRaw, rbw2raw, raw2rbw } from './diff';
+import { diffRaw, rbw2raw, raw2rbw, diffPatcher } from './diff';
 import _throttle from 'lodash/throttle';
 
 const getRawBySharedData = (rawPath, ydoc) => {
@@ -58,6 +58,7 @@ export {
   getNewSelection,
   rbw2raw,
   raw2rbw,
+  diffPatcher,
 };
 const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
 const editorMap = {};

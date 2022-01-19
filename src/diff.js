@@ -272,12 +272,4 @@ const getStringDiffArray = (txt1, txt2) => {
   return DMP.diff_main(txt1, txt2);
 };
 
-export {
-  DiffPatcher,
-  diffPatcher,
-  DMP,
-  diffRaw,
-  getStringDiffArray,
-  raw2rbw,
-  rbw2raw,
-};
+export { diffPatcher, DMP, diffRaw, getStringDiffArray, raw2rbw, rbw2raw };
