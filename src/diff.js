@@ -97,8 +97,8 @@ const entityArray2Map = (arr, globalRangeMap) => {
       }
       entityRange[commentkey] = 1;
       Object.values(data).forEach(com => {
-        entity[com.key] = com;
-        dataKey[com.key] = 1;
+        entity[com.unique || com.key] = com;
+        dataKey[com.unique || com.key] = 1;
       });
       rangeMap[commentkey] = globalRangeMap[commentkey] = {
         length: formatStringLen(item.length),
