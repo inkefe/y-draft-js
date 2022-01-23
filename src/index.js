@@ -279,7 +279,7 @@ export class DraftBinding {
         editor
       );
     }
-    const draftEditor = editor.update ? editor : editor.getEditorRef(); // 原始的draft-editor
+    const draftEditor = editor.update ? editor : editor.getEditorRef?.(); // origin draft-editor
     if (!draftEditor || !editor.componentDidUpdate) {
       return console.warn('editor must be Draft ref');
     }
@@ -365,10 +365,15 @@ export class DraftBinding {
   setStateByRaw = raw => {
     const _onChange = this._update || this._onChange;
     if (!isRaw(raw) || !_onChange) return;
-    if (this.isPluginEditor && !this.draftEditor.getEditorRef()) {
+    if (!this.draftEditor) return this.destroy();
+    if (this.isPluginEditor && !this.draftEditor?.getEditorRef?.()) {
+      if (this.isDetoryed) {
+        return this.rawYmap.unobserveDeep(this.onObserveDeep);
+      }
       return console.warn(
         'drafjsEditor Can`t be found it, please rebind the editor',
-        this.draftEditor
+        this,
+        this.rawPath
       );
     }
     const editorState = this.getEditorState();
@@ -450,6 +455,7 @@ export class DraftBinding {
       'mousedown',
       this.releaseSelection
     );
+    this.rawYmap?.unobserveDeep(this.onObserveDeep);
     this.isDetoryed = true;
     this.provider.off('status', this.onStatusChange);
     this.log('destroy: ' + this.rawPath.join('.'));
@@ -462,6 +468,5 @@ export class DraftBinding {
     }
     Reflect.deleteProperty(editorMap, this.editorKey);
     this.cancel?.();
-    this.rawYmap && this.rawYmap.unobserveDeep(this.onObserveDeep);
   };
 }

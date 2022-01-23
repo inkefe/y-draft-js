@@ -36,7 +36,8 @@ const getKeyByEntityData = entityData => {
   ) {
     case 'COMMENT':
       return `COMMENT-${Object.values(data)
-        .map(i => i.key)
+        .filter(Boolean)
+        .map(i => i.unique || i.key)
         .join('-')}`;
     case 'LINK':
       return `LINK-${data.key || data.url}`;
