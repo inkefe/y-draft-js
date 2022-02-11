@@ -1,9 +1,10 @@
 build
 dist
-lib
+lib/*
 .prettierrc.json
 .husky
 *.min.js
 *.esm.js
 *.usm.js
 *-lock.json
+src/test/*
