@@ -45,7 +45,7 @@ const setRawToSharedData = (rawPath, ydoc, raw) => {
       target.set(key, toSyncElement(val))
     );
   });
-  console.log(target.toJSON(), 'target.toJSON()');
+  // console.log(target.toJSON(), 'target.toJSON()');
   return target;
 };
 export {
@@ -279,7 +279,7 @@ export class DraftBinding {
         editor
       );
     }
-    const draftEditor = editor.update ? editor : editor.getEditorRef?.(); // origin draft-editor
+    const draftEditor = editor.update ? editor : editor.getEditorRef?.(); // 原始的draft-editor
     if (!draftEditor || !editor.componentDidUpdate) {
       return console.warn('editor must be Draft ref');
     }

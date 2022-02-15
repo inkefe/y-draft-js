@@ -1,6 +1,6 @@
 {
   "name": "y-draft-js",
-  "version": "1.6.12",
+  "version": "1.7.0",
   "description": "Draft-js editor bindings for Yjs",
   "private": false,
   "browser": "./lib/index.esm.js",
@@ -19,7 +19,7 @@
     "draft-js": "^0.11.7",
     "jsondiffpatch": "^0.4.1",
     "lodash": "^4.17.21",
-    "yjs": "^13.5.23"
+    "yjs": "^13.5.27"
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3010",
@@ -28,7 +28,8 @@
     "start:server": "cross-env HOST=0.0.0.0 PORT=1234 npx y-websocket-server",
     "prepare": "husky install",
     "lint": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "jest"
   },
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.16.0",
@@ -47,12 +48,16 @@
     "clsx": "1.1.1",
     "confusing-browser-globals": "^1.0.10",
     "cross-env": "^7.0.3",
+    "express": "^4.17.2",
     "faker": "^5.5.3",
+    "fs-extra": "^10.0.0",
     "husky": "^6.0.0",
     "immutability-helper": "^3.1.1",
     "immutable": "^3.8.2",
+    "jest": "^27.5.1",
     "katex": "^0.7.1",
     "prettier": "^2.4.1",
+    "randomjson": "^1.0.9",
     "react": "17.0.2",
     "react-dom": "17.0.2",
     "rollup": "^2.60.1",

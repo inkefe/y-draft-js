@@ -59,6 +59,7 @@ const entityArray2Map = (arr, globalRangeMap) => {
   const rangeMap = {};
   arr.forEach((item, index) => {
     const entityData = item.key;
+    // if (!entityData) console.log(item);
     const { type, data } = entityData;
     const key = getKeyByEntityData(entityData);
     // key = rangeMap[key] ? `${key}-0` : key
@@ -72,7 +73,7 @@ const entityArray2Map = (arr, globalRangeMap) => {
         },
       };
       entity[`${data.mention.id}-${data.key || data.mention.name}`] = data;
-      entityRange[key] = 1;
+      entityRange[key] = index;
       return;
     }
     if (type === 'LINK' && key) {
@@ -85,7 +86,7 @@ const entityArray2Map = (arr, globalRangeMap) => {
         },
       };
       entity[`link-${data.key || data.url}`] = data;
-      entityRange[key] = 1;
+      entityRange[key] = index;
       return;
     }
     if (type === 'COMMENT' && key) {
@@ -95,7 +96,7 @@ const entityArray2Map = (arr, globalRangeMap) => {
       while (globalRangeMap[commentkey]) {
         commentkey = `${key}-${i++}`;
       }
-      entityRange[commentkey] = 1;
+      entityRange[commentkey] = index;
       Object.values(data).forEach(com => {
         entity[com.unique || com.key] = com;
         dataKey[com.unique || com.key] = 1;
@@ -115,7 +116,11 @@ const entityArray2Map = (arr, globalRangeMap) => {
     //   offset: formatStringLen(item.offset),
     //   key: entityData,
     // }
-    entityRange[index] = item;
+    entityRange[index] = {
+      ...item,
+      length: formatStringLen(item.length),
+      offset: formatStringLen(item.offset),
+    };
   });
   return {
     entityRange,
@@ -125,18 +130,18 @@ const entityArray2Map = (arr, globalRangeMap) => {
 };
 const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
   const arr = [];
-  // const isAtomic = Object.keys(entityRanges).every(key => +key >= 0)
-  // if (isAtomic) arr.push(objToArray(entityRanges))
   for (const index in entityRanges) {
     let target = null;
     const enityRange = enityRangeMap[index] || entityRanges[index];
     if (!enityRange?.key) continue;
     const { type, data } = enityRange.key;
+    const offset = enityRange.offset.length;
+    const length = enityRange.length.length;
     if (type === 'mention' && data) {
       // enityRange.data = entityPool[data]
       target = {
-        offset: enityRange.offset.length,
-        length: enityRange.length.length,
+        offset,
+        length,
         key: {
           ...enityRange.key,
           data: entityPool[data],
@@ -145,8 +150,8 @@ const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
     }
     if (type === 'LINK' && data) {
       target = {
-        offset: enityRange.offset.length,
-        length: enityRange.length.length,
+        offset,
+        length,
         key: {
           ...enityRange.key,
           data: entityPool[data],
@@ -159,18 +164,22 @@ const entityRange2Array = (entityRanges, entityPool, enityRangeMap) => {
         comments[i] = entityPool[key];
       });
       target = {
-        offset: enityRange.offset.length,
-        length: enityRange.length.length,
+        offset,
+        length,
         key: {
           ...enityRange.key,
           data: comments,
         },
       };
     }
-    target = target || entityRanges[index];
-    arr.push(target);
+    target = target || {
+      ...entityRanges[index],
+      offset,
+      length,
+    };
+    const i = isNaN(Number(index)) ? entityRanges[index] : Number(index);
+    arr[i] = target;
   }
-  arr.sort((a, b) => a.offset - b.offset);
   return arr;
 };
 
@@ -187,6 +196,8 @@ const raw2rbw = raw => {
     blocks: blocks.map(item => {
       const { entityRanges = [], inlineStyleRanges } = item;
       const newEntityRanges = entityRanges.map(enti => ({
+        // offset: formatStringLen(enti.offset),
+        // length: formatStringLen(enti.length),
         ...enti,
         key: entityMap[enti.key],
       }));
@@ -267,10 +278,24 @@ const diffRaw = (preRaw, nextRaw) => {
   const delta = diffPatcher.diff(preRbw, nextRbw);
   return delta;
 };
+
+const patchRaw = (preRaw, delta) => {
+  const preRbw = raw2rbw(preRaw);
+  const rbw = diffPatcher.patch(preRbw, delta);
+  return rbw2raw(rbw);
+};
 const DMP = new Dmp();
 
 const getStringDiffArray = (txt1, txt2) => {
   return DMP.diff_main(txt1, txt2);
 };
 
-export { diffPatcher, DMP, diffRaw, getStringDiffArray, raw2rbw, rbw2raw };
+export {
+  diffPatcher,
+  DMP,
+  diffRaw,
+  patchRaw,
+  getStringDiffArray,
+  raw2rbw,
+  rbw2raw,
+};

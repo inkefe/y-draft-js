@@ -311,20 +311,20 @@ const getOperationByDiff = (diff, path) => {
         if (res.length === 0) {
           index = start1;
         } else {
-          const { length, action, index: _index } = res[res.length - 1];
-          index =
-            (action === 'retain' ? length : _index) +
-            (item[0] === 0 ? item[1].length : 0);
+          const { nextIndex } = res[res.length - 1];
+          index = nextIndex;
         }
         // console.log(index, res);
+        const action =
+          item[0] === 0 ? 'retain' : item[0] === 1 ? 'insert' : 'delete';
         return [
           ...res,
           {
             type: 'string',
             path,
-            action:
-              item[0] === 0 ? 'retain' : item[0] === 1 ? 'insert' : 'delete',
+            action,
             index,
+            nextIndex: action === 'delete' ? index : index + item[1].length,
             value: item[1],
             length: res.length === 0 ? start1 + item[1].length : item[1].length,
           },
@@ -374,7 +374,7 @@ export function toRawSharedData(raw) {
   const rbw = raw2rbw(raw);
   return toSyncElement(rbw);
 }
-const ingnoreKeys = ['type', 'key', 'mutability'];
+// const ingnoreKeys = [];
 export function toSyncElement(item) {
   if (typeof item === 'string') {
     const textElement = new Y.Text(item);
@@ -390,12 +390,7 @@ export function toSyncElement(item) {
     const isRaw = item.blocks && item.entityMap && !item.entityPool;
     if (isRaw) return toRawSharedData(item);
     Object.keys(item).forEach(key => {
-      mapElement.set(
-        key,
-        ingnoreKeys.indexOf(key) >= 0 && typeof item[key] === 'string'
-          ? item[key]
-          : toSyncElement(item[key])
-      );
+      mapElement.set(key, toSyncElement(item[key]));
     });
     return mapElement;
   }
@@ -506,7 +501,7 @@ export const onTargetSync = (path, ydoc, cb, firstType) => {
   const targetDoc = _pathTargeDoc.has(ydoc)
     ? _pathTargeDoc.get(ydoc) || {}
     : {};
-  if (!_pathTargeDoc.has(ydoc)) _pathTargeDoc.set(ydoc, targetDoc);
+  _pathTargeDoc.set(ydoc, targetDoc);
   Array.isArray(path) || (path = [path]);
   const [fixField, ...subPath] = path;
   const firstData = ydoc.get(fixField, (firstType = Y.Map));
@@ -537,12 +532,10 @@ export const onTargetSync = (path, ydoc, cb, firstType) => {
     setTimeout(() => cb(target), 0);
   }
   return () => {
-    targetDoc[pathKey].callBacks.splice(
-      targetDoc[pathKey].callBacks.indexOf(cb),
-      1
-    );
+    const { callBacks = [] } = targetDoc[pathKey];
+    callBacks.splice(callBacks.indexOf(cb), 1);
     firstData.unobserveDeep(ob);
-    if (targetDoc[pathKey].callBacks.length === 0) {
+    if (callBacks.length === 0) {
       delete targetDoc[pathKey];
     }
   };
