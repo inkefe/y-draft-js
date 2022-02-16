@@ -46,7 +46,7 @@ export default [
   {
     input: `./src/diff.js`,
     output: {
-      format: 'cjs',
+      format: 'esm',
       file: './lib/diff.js',
       exports: 'named',
     },
