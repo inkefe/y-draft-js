@@ -19,7 +19,7 @@ test('test change yjs', () => {
   let preRaw = raw
   return new Promise(resolve => {
      const start = () => {
-      for (let i = 0; i < 200; i++) {
+      for (let i = 0; i < 3000; i++) {
         // logFile(`preRaw_${i}.json`, JSON.parse(JSON.stringify(preRaw)))
         const newRaw = randomChangeRaw(preRaw)
         // logFile(`newRaw_${i}.json`, JSON.parse(JSON.stringify(newRaw)))
