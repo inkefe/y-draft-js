@@ -38,7 +38,7 @@ export const isRaw = raw => {
   return raw && raw.blocks && raw.entityMap;
 };
 const transRaw = raw => {
-  if (!raw) return raw;
+  if (!raw || typeof raw !== 'object') return raw;
   const { blocks = [], entityMap } = raw;
   if (_isEmpty(entityMap)) raw.entityMap = {};
   blocks.forEach(block => {
