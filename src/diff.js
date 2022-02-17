@@ -59,7 +59,7 @@ const entityArray2Map = (arr, globalRangeMap) => {
   const rangeMap = {};
   arr.forEach((item, index) => {
     const entityData = item.key;
-    // if (!entityData) console.log(item);
+    if (!entityData) return;
     const { type, data } = entityData;
     const key = getKeyByEntityData(entityData);
     // key = rangeMap[key] ? `${key}-0` : key
