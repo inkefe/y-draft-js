@@ -4,6 +4,11 @@ import _isEmpty from 'lodash/isEmpty';
 import { SelectionState, genKey } from 'draft-js';
 import { raw2rbw } from './diff';
 
+// equal: 0, delete: -1, insert: 1
+const DIFF_DELETE = -1;
+const DIFF_INSERT = 1;
+const DIFF_EQUAL = 0;
+
 export const getRaw = (texts = '') => {
   if (!Array.isArray(texts)) texts = [texts];
   return {
@@ -305,6 +310,20 @@ const getOperationByDiff = (diff, path) => {
   if (diff[2] === 2 && diff.length === 3) {
     // text of block
     const { diffs: textDelta, start1 } = DMP.patch_fromText(diff[0])[0];
+    if (ingnoreKeys.indexOf(path[path.length - 1]) >= 0) {
+      return [
+        {
+          type: 'object', // as object
+          path,
+          action: 'replace',
+          value: textDelta.reduce((prev, curr) => {
+            const [op, text] = curr;
+            if (op === DIFF_DELETE) return prev;
+            return prev + text;
+          }, ''),
+        },
+      ];
+    }
     return textDelta
       .reduce((res, item) => {
         let index = 0;
@@ -316,7 +335,11 @@ const getOperationByDiff = (diff, path) => {
         }
         // console.log(index, res);
         const action =
-          item[0] === 0 ? 'retain' : item[0] === 1 ? 'insert' : 'delete';
+          item[0] === DIFF_EQUAL
+            ? 'retain'
+            : item[0] === DIFF_INSERT
+            ? 'insert'
+            : 'delete';
         return [
           ...res,
           {
@@ -374,7 +397,7 @@ export function toRawSharedData(raw) {
   const rbw = raw2rbw(raw);
   return toSyncElement(rbw);
 }
-// const ingnoreKeys = [];
+const ingnoreKeys = ['type', 'key', 'mutability'];
 export function toSyncElement(item) {
   if (typeof item === 'string') {
     const textElement = new Y.Text(item);
@@ -390,13 +413,17 @@ export function toSyncElement(item) {
     const isRaw = item.blocks && item.entityMap && !item.entityPool;
     if (isRaw) return toRawSharedData(item);
     Object.keys(item).forEach(key => {
-      mapElement.set(key, toSyncElement(item[key]));
+      mapElement.set(
+        key,
+        ingnoreKeys.indexOf(key) >= 0 && typeof item[key] === 'string'
+          ? item[key]
+          : toSyncElement(item[key])
+      );
     });
     return mapElement;
   }
   return item === void 0 ? '' : item;
 }
-
 export const getTargetByPath = (path, target, isSync) => {
   if (path.length === 0) return target;
   return path.reduce((t, key, index) => {

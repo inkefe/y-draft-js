@@ -24,7 +24,6 @@ test('check raw2rbw & rbw2raw', () => {
   //   })
   // })
 });
-/*
 // jest.setTimeout(20000)
 test('check diffRaw', () => {
   return new Promise(resolve => {
@@ -50,4 +49,3 @@ test('check diffRaw', () => {
     })
   })
 });
-*/
