@@ -353,7 +353,7 @@ function addBlock(raw, index) {
   }
 }
 function randomChangeRaw(raw) {
-  const type = getRandomNumBoth(0, 10)
+  const type = getRandomNumBoth(0, 11)
   switch (type) {
     case 0:
     case 1:
@@ -372,6 +372,11 @@ function randomChangeRaw(raw) {
     }
     case 9: {
       return removeBlock(raw, getRandomNumBoth(0, raw.blocks.length))
+    }
+    case 10: { // replace
+      const index =  getRandomNumBoth(0, raw.blocks.length)
+      const res = removeBlock(raw, index)
+      return addBlock(res, index)
     }
     default: return raw
   }

@@ -267,45 +267,52 @@ const getDeltaArray = (diff, path = []) => {
 const getOperationByDiff = (diff, path) => {
   if (diff._t === 'a') {
     // array
-    return Object.keys(diff)
-      .sort((a, b) => ~~a.replace(/^_/, '-') - b.replace(/^_/, '-'))
-      .map(key => {
-        if (key === '_t') return null;
-        const res = {
-          type: 'array',
-          path,
-        };
-        const isModify = !Array.isArray(diff[key]);
-        if (key[0] === '_') {
-          return diff[key][2] === 3
-            ? {
-                // move
-                ...res,
-                action: 'move',
-                index: ~~key.substr(1), // 原index
-                value: diff[key][1], // new index
-              }
-            : {
-                ...res,
-                action: 'delete',
-                index: ~~key.substr(1),
-                length: 1,
-              };
-        }
-        if (isModify) {
-          return getDeltaArray(diff[key], [...path, key]);
-        }
-        return {
-          ...res,
-          action: 'insert',
-          index: ~~key,
-          value: diff[key].map(item => toSyncElement(item)),
-        };
-      })
-      .filter(Boolean)
+    const actionKeys = Object.keys(diff)
+      .reduce(
+        ([del, add], a) => {
+          if (a === '_t') return [del, add];
+          if (a[0] === '_') {
+            return [[a, ...del], add]; // delete from right to left
+          }
+          return [del, [...add, a]]; // add from left to right
+        },
+        [[], []]
+      )
       .reduce((prev, curr) => {
         return Array.isArray(curr) ? [...prev, ...curr] : [...prev, curr];
       }, []);
+    return actionKeys.map(key => {
+      const res = {
+        type: 'array',
+        path,
+      };
+      const isModify = !Array.isArray(diff[key]);
+      if (key[0] === '_') {
+        return diff[key][2] === 3
+          ? {
+              // move
+              ...res,
+              action: 'move',
+              index: ~~key.substr(1), // 原index
+              value: diff[key][1], // new index
+            }
+          : {
+              ...res,
+              action: 'delete',
+              index: ~~key.substr(1),
+              length: 1,
+            };
+      }
+      if (isModify) {
+        return getDeltaArray(diff[key], [...path, key]);
+      }
+      return {
+        ...res,
+        action: 'insert',
+        index: ~~key,
+        value: diff[key].map(item => toSyncElement(item)),
+      };
+    });
   }
   if (diff[2] === 2 && diff.length === 3) {
     // text of block
