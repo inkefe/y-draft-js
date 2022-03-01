@@ -53,8 +53,8 @@ class DOMObserver {
 
   constructor(container: HTMLElement) {
     this.container = container;
-    this.mutations = Map();
-    this._mutations = [];
+    this.mutations = Map(); // this._mutations = [];
+
     const containerWindow = getWindowForNode(container);
     const MutationObserver = containerWindow.MutationObserver;
 
@@ -71,8 +71,10 @@ class DOMObserver {
     }
   }
 
-  start(): void {
-    this.target = null;
+  start(editor): void {
+    const lastEditorState = editor._latestEditorState;
+    const selection = lastEditorState.getSelection();
+    this.starKey = selection.getStartKey();
 
     if (this.observer) {
       this.observer.observe(this.container, DOM_OBSERVER_OPTIONS);
@@ -97,10 +99,10 @@ class DOMObserver {
       this.container.removeEventListener('DOMCharacterDataModified', this.onCharData);
     }
 
+    this.starKey = null;
     const mutations = this.mutations;
-    console.log(this._mutations, mutations);
-    this.mutations = Map();
-    this._mutations = [];
+    this.mutations = Map(); // this._mutations = [];
+
     return mutations;
   }
 
@@ -156,12 +158,12 @@ class DOMObserver {
     const textContent = this.getMutationTextContent(mutation);
 
     if (textContent != null) {
-      this.target = this.target || mutation.target;
-      if (mutation.target !== this.target) return;
+      const offsetKey = findAncestorOffsetKey(mutation.target);
+      if (!offsetKey) return;
+      const blockKey = offsetKey.split('-')[0];
+      this.starKey = this.starKey || blockKey;
+      if (this.starKey !== blockKey) return; // this._mutations.push(mutation);
 
-      this._mutations.push(mutation);
-
-      const offsetKey = nullthrows(findAncestorOffsetKey(mutation.target));
       this.mutations = this.mutations.set(offsetKey, textContent);
     }
   }

@@ -5,34 +5,36 @@
  * LICENSE file in the root directory of this source tree.
  *
  * @format
- * 
+ * @flow strict-local
  * @emails oncall+draft_js
  */
 'use strict';
 
-var DOMObserver = require("./DOMObserver");
+import type DraftEditor from "./DraftEditor.react";
 
-var DraftModifier = require("./DraftModifier");
+const DOMObserver = require("./DOMObserver");
 
-var DraftOffsetKey = require("./DraftOffsetKey");
+const DraftModifier = require("./DraftModifier");
 
-var EditorState = require("./EditorState");
+const DraftOffsetKey = require("./DraftOffsetKey");
 
-var Keys = require("fbjs/lib/Keys");
+const EditorState = require("./EditorState");
 
-var UserAgent = require("fbjs/lib/UserAgent");
+const Keys = require("fbjs/lib/Keys");
 
-var editOnSelect = require("./editOnSelect");
+const UserAgent = require("fbjs/lib/UserAgent");
 
-var getContentEditableContainer = require("./getContentEditableContainer");
+const editOnSelect = require("./editOnSelect");
 
-var getDraftEditorSelection = require("./getDraftEditorSelection");
+const getContentEditableContainer = require("./getContentEditableContainer");
 
-var getEntityKeyForSelection = require("./getEntityKeyForSelection");
+const getDraftEditorSelection = require("./getDraftEditorSelection");
 
-var nullthrows = require("fbjs/lib/nullthrows");
+const getEntityKeyForSelection = require("./getEntityKeyForSelection");
 
-var isIE = UserAgent.isBrowser('IE');
+const nullthrows = require("fbjs/lib/nullthrows");
+
+const isIE = UserAgent.isBrowser('IE');
 /**
  * Millisecond delay to allow `compositionstart` to fire again upon
  * `compositionend`.
@@ -44,7 +46,7 @@ var isIE = UserAgent.isBrowser('IE');
  * sooner than we want.
  */
 
-var RESOLVE_DELAY = 20;
+const RESOLVE_DELAY = 20;
 /**
  * A handful of variables used to track the current composition and its
  * resolution status. These exist at the module level because it is not
@@ -52,23 +54,23 @@ var RESOLVE_DELAY = 20;
  * and it simplifies state management with respect to the DraftEditor component.
  */
 
-var resolved = false;
-var stillComposing = false;
-var domObserver = null;
+let resolved = false;
+let stillComposing = false;
+let domObserver = null;
 
-function startDOMObserver(editor) {
+function startDOMObserver(editor: DraftEditor) {
   if (!domObserver) {
     domObserver = new DOMObserver(getContentEditableContainer(editor));
-    domObserver.start();
+    domObserver.start(editor);
   }
 }
 
-var DraftEditorCompositionHandler = {
+const DraftEditorCompositionHandler = {
   /**
    * A `compositionstart` event has fired while we're still in composition
    * mode. Continue the current composition session to prevent a re-render.
    */
-  onCompositionStart: function onCompositionStart(editor) {
+  onCompositionStart(editor: DraftEditor): void {
     stillComposing = true;
     startDOMObserver(editor);
   },
@@ -87,15 +89,16 @@ var DraftEditorCompositionHandler = {
    * twice could break the DOM, we only use the first event. Example: Arabic
    * Google Input Tools on Windows 8.1 fires `compositionend` three times.
    */
-  onCompositionEnd: function onCompositionEnd(editor) {
+  onCompositionEnd(editor: DraftEditor): void {
     resolved = false;
     stillComposing = false;
-    setTimeout(function () {
+    setTimeout(() => {
       if (!resolved) {
         DraftEditorCompositionHandler.resolveComposition(editor);
       }
     }, RESOLVE_DELAY);
   },
+
   onSelect: editOnSelect,
 
   /**
@@ -103,7 +106,7 @@ var DraftEditorCompositionHandler = {
    * the arrow keys are used to commit, prevent default so that the cursor
    * doesn't move, otherwise it will jump back noticeably on re-render.
    */
-  onKeyDown: function onKeyDown(editor, e) {
+  onKeyDown(editor: DraftEditor, e: SyntheticKeyboardEvent<>): void {
     if (!stillComposing) {
       // This check was added in D23734060. Seemingly, we should be checking
       // to see if the resolved flag is false here, otherwise the below
@@ -135,7 +138,7 @@ var DraftEditorCompositionHandler = {
    * characters that we do not want. `preventDefault` allows the composition
    * to be committed while preventing the extra characters.
    */
-  onKeyPress: function onKeyPress(_editor, e) {
+  onKeyPress(_editor: DraftEditor, e: SyntheticKeyboardEvent<>): void {
     if (e.which === Keys.RETURN) {
       e.preventDefault();
     }
@@ -158,16 +161,16 @@ var DraftEditorCompositionHandler = {
    * Resetting innerHTML will move focus to the beginning of the editor,
    * so we update to force it back to the correct place.
    */
-  resolveComposition: function resolveComposition(editor) {
+  resolveComposition(editor: DraftEditor): void {
     if (stillComposing) {
       return;
     }
 
-    var lastEditorState = editor._latestEditorState;
-    var mutations = nullthrows(domObserver).stopAndFlushMutations();
+    const lastEditorState = editor._latestEditorState;
+    const mutations = nullthrows(domObserver).stopAndFlushMutations();
     domObserver = null;
     resolved = true;
-    var editorState = EditorState.set(lastEditorState, {
+    let editorState = EditorState.set(lastEditorState, {
       inCompositionMode: false
     });
     editor.exitCurrentMode();
@@ -193,31 +196,29 @@ var DraftEditorCompositionHandler = {
     // }
 
 
-    var contentState = editorState.getCurrentContent();
-    mutations.forEach(function (composedChars, offsetKey) {
+    let contentState = editorState.getCurrentContent();
+    mutations.forEach((composedChars, offsetKey) => {
       composedChars = composedChars.replace(/\u200b/, '');
-
-      var _DraftOffsetKey$decod = DraftOffsetKey.decode(offsetKey),
-          blockKey = _DraftOffsetKey$decod.blockKey,
-          decoratorKey = _DraftOffsetKey$decod.decoratorKey,
-          leafKey = _DraftOffsetKey$decod.leafKey;
-
-      var block = editorState.getBlockTree(blockKey);
+      const {
+        blockKey,
+        decoratorKey,
+        leafKey
+      } = DraftOffsetKey.decode(offsetKey);
+      const block = editorState.getBlockTree(blockKey);
       if (!block) return;
-
-      var _block$getIn = block.getIn([decoratorKey, 'leaves', leafKey]),
-          start = _block$getIn.start,
-          end = _block$getIn.end;
-
-      var replacementRange = editorState.getSelection().merge({
+      const {
+        start,
+        end
+      } = block.getIn([decoratorKey, 'leaves', leafKey]);
+      const replacementRange = editorState.getSelection().merge({
         anchorKey: blockKey,
         focusKey: blockKey,
         anchorOffset: start,
         focusOffset: end,
         isBackward: false
       });
-      var entityKey = getEntityKeyForSelection(contentState, replacementRange);
-      var currentStyle = contentState.getBlockForKey(blockKey).getInlineStyleAt(start);
+      const entityKey = getEntityKeyForSelection(contentState, replacementRange);
+      const currentStyle = contentState.getBlockForKey(blockKey).getInlineStyleAt(start);
       contentState = DraftModifier.replaceText(contentState, replacementRange, composedChars, currentStyle, entityKey); // We need to update the editorState so the leaf node ranges are properly
       // updated and multiple mutations are correctly applied.
 
@@ -233,16 +234,17 @@ var DraftEditorCompositionHandler = {
     // in IME mode, then the selection will move the cursor to an invalid range.
     // See D23905960 for more context:
 
-    var documentSelection = getDraftEditorSelection(lastEditorState, getContentEditableContainer(editor));
-    var compositionEndSelectionState = documentSelection.selectionState;
+    const documentSelection = getDraftEditorSelection(lastEditorState, getContentEditableContainer(editor));
+    const compositionEndSelectionState = documentSelection.selectionState;
     editor.restoreEditorDOM(); // See:
     // - https://github.com/facebook/draft-js/issues/2093
     // - https://github.com/facebook/draft-js/pull/2094
     // Apply this fix only in IE for now. We can test it in
     // other browsers in the future to ensure no regressions
 
-    var editorStateWithUpdatedSelection = isIE ? EditorState.forceSelection(editorState, compositionEndSelectionState) : EditorState.acceptSelection(editorState, compositionEndSelectionState);
+    const editorStateWithUpdatedSelection = isIE ? EditorState.forceSelection(editorState, compositionEndSelectionState) : EditorState.acceptSelection(editorState, compositionEndSelectionState);
     editor.update(EditorState.push(editorStateWithUpdatedSelection, contentState, 'insert-characters'));
   }
+
 };
 module.exports = DraftEditorCompositionHandler;
