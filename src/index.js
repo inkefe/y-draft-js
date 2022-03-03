@@ -202,10 +202,14 @@ export class DraftBinding {
     }
   };
 
-  forceRefresh = () => {
-    const raw = rbw2raw(this.rawYmap.toJSON());
-    this.muxSetRaw(raw);
-  };
+  forceRefresh = _throttle(
+    () => {
+      const raw = rbw2raw(this.rawYmap.toJSON());
+      this.muxSetRaw(raw);
+    },
+    100,
+    { leading: true, trailing: true }
+  );
 
   muxSetRaw = raw => {
     this._waitUpdateTarget = null;
