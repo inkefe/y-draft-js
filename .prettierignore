@@ -8,3 +8,4 @@ lib/*
 *.usm.js
 *-lock.json
 test/*
+temp/*
