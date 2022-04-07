@@ -9,10 +9,36 @@ function sleep(ms) {
   return new Promise(resolve=> setTimeout(resolve, ms))
 }
 const ydoc = new Y.Doc();
-const raw = getRandomRaw(false)
+const raw = {
+  'blocks': [
+      {
+          'key': '649ma',
+          'text': '1',
+          'type': 'unstyled',
+          'depth': 0,
+          'inlineStyleRanges': [],
+          'entityRanges': [],
+          'data': {}
+      },],
+    'entityMap': {},
+}
+
+const newRaw = {
+  'blocks': [
+      {
+          'key': '649ma',
+          'text': 'accbb',
+          'type': 'unstyled',
+          'depth': 0,
+          'inlineStyleRanges': [],
+          'entityRanges': [],
+          'data': {}
+      },],
+    'entityMap': {},
+}
 const rawYmap = ydoc.getMap('raw')
-// console.log(JSON.stringify(raw));
 // jest.setTimeout(15000)
+/**
 test('test change yjs', () => {
   
   setRawToSharedData('raw', ydoc, raw);
@@ -44,20 +70,38 @@ test('test change yjs', () => {
     })
   })
 })
-/*
+*/
+function changeRaw (raw, text) {
+  return {
+    'blocks': [
+      {
+        ...raw.blocks[0],
+        text: raw.blocks[0].text + text,
+      }
+    ],
+    'entityMap': raw.entityMap,
+  }
+}
 test('test diffrent user change yjs', () => {
   
   setRawToSharedData('raw', ydoc, raw);
-  let preRaw = raw
+  let preRawA = raw
+  let preRawB = raw
   return new Promise(resolve => {
      const start = () => {
-      for (let i = 0; i < 3000; i++) {
-        logFile(`preRaw_${i}.json`, JSON.parse(JSON.stringify(preRaw)))
-        const newRaw = randomChangeRaw(preRaw)
-        logFile(`newRaw_${i}.json`, JSON.parse(JSON.stringify(newRaw)))
-        const delta = diffRaw(preRaw, newRaw);
+      for (let i = 0; i < 10; i++) {
+        // logFile(`preRaw_${i}.json`, JSON.parse(JSON.stringify(preRaw)))
+        const rawA = changeRaw(preRawA, 'a')
+        const rawB = changeRaw(preRawB, 'b')
+        // logFile(`newRaw_${i}.json`, JSON.parse(JSON.stringify(newRaw)))
+        const deltaA = diffRaw(preRawA, rawA);
+        const deltaB = diffRaw(preRawB, rawB);
         changeYmapByDelta(
-          delta,
+          deltaA,
+          rawYmap
+        );
+        changeYmapByDelta(
+          deltaB,
           rawYmap
         );
         // logFile(`delta_${i}.json`, delta || {})
@@ -66,8 +110,9 @@ test('test diffrent user change yjs', () => {
         logFile(`ydocRaw_${i}.json`, JSON.parse(JSON.stringify(ydocRaw)))
         expect(
           ydocRaw
-        ).toEqual(newRaw)
-        preRaw = newRaw
+        ).toEqual(ydocRaw)
+        preRawA = ydocRaw
+        preRawB = ydocRaw
       }
     }
     fs.remove('./temp', () => {
@@ -76,5 +121,3 @@ test('test diffrent user change yjs', () => {
     })
   })
 })
-
-*/

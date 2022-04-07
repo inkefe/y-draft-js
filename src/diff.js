@@ -91,6 +91,9 @@ const entityArray2Map = (arr, globalRangeMap) => {
     }
     if (type === 'COMMENT' && key) {
       const dataKey = {};
+      if (key === 'COMMENT-') {
+        return;
+      }
       let commentkey = key;
       let i = 1;
       while (globalRangeMap[commentkey]) {

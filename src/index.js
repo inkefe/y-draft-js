@@ -62,6 +62,17 @@ export {
 };
 const CHANGE_CLIENT = 'CHANGE_CLIENT'; // 用于识别是不是自己的更新
 const editorMap = {};
+const preAwarenessMap = new WeakMap();
+// 更新光标数据
+const updateAwareness = _throttle((provider, selectData) => {
+  const selectStr = JSON.stringify(selectData);
+  const preAwareness = preAwarenessMap.get(provider) || '';
+  preAwarenessMap.set(provider, selectStr);
+  const preNotFocus = !!preAwareness.match(/:false}$/);
+  if (preAwareness === selectStr || (preNotFocus && !selectData.hasFocus))
+    return;
+  provider.awareness.setLocalStateField('selection', selectData);
+}, 300);
 export class DraftBinding {
   constructor(opts) {
     const {
@@ -149,7 +160,7 @@ export class DraftBinding {
             this.shouldAcceptSelection = false;
           } // 释放控制
           editorMap[this.editorKey] = selectData.hasFocus;
-          this.updateAwareness(selectData);
+          updateAwareness(this.provider, selectData);
           const newJson = JSON.stringify(raw);
           const rawYmap = getTargetByPath(this.rawPath, ydoc);
           if (!rawYmap || this.isConnecting) return;
@@ -191,10 +202,6 @@ export class DraftBinding {
     return this.selectData;
   };
 
-  updateAwareness = _throttle(selectData => {
-    this.awareness.setLocalStateField('selection', selectData);
-  }, 300);
-
   setUpdatable = val => {
     this._updatable = !!val;
     if (!!val && this._stopUpdateEvents) {
@@ -207,7 +214,7 @@ export class DraftBinding {
       const raw = rbw2raw(this.rawYmap.toJSON());
       this.muxSetRaw(raw);
     },
-    100,
+    500,
     { leading: true, trailing: true }
   );
 

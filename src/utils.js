@@ -529,7 +529,7 @@ const applyYDocOp = (opr, ymap) => {
 };
 const _pathTargeDoc = new WeakMap();
 // 获取从ydoc下指定路径的数据，如果有值则用回调返回，如果没有则自动监听到目标值出现, 并且持续监听目标路径下的y对象，一旦被更改成另一个对象也会执行回调，并返回的cancle方法来取消监听
-export const onTargetSync = (path, ydoc, cb, firstType) => {
+export const onTargetSync = (path, ydoc, cb, firstType = Y.Map) => {
   if (!ydoc) return console.warn('ydoc is undefined');
   if (!cb) return console.warn('callback is necessary in onTargetSync');
   const targetDoc = _pathTargeDoc.has(ydoc)
@@ -538,7 +538,7 @@ export const onTargetSync = (path, ydoc, cb, firstType) => {
   _pathTargeDoc.set(ydoc, targetDoc);
   Array.isArray(path) || (path = [path]);
   const [fixField, ...subPath] = path;
-  const firstData = ydoc.get(fixField, (firstType = Y.Map));
+  const firstData = ydoc.get(fixField, firstType);
   if (subPath.length === 0) {
     setTimeout(() => cb(firstData), 0);
     return;
@@ -566,6 +566,7 @@ export const onTargetSync = (path, ydoc, cb, firstType) => {
     setTimeout(() => cb(target), 0);
   }
   return () => {
+    if (!targetDoc[pathKey]) return;
     const { callBacks = [] } = targetDoc[pathKey];
     callBacks.splice(callBacks.indexOf(cb), 1);
     firstData.unobserveDeep(ob);

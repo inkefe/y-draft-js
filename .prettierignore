@@ -9,3 +9,4 @@ lib/*
 *-lock.json
 test/*
 temp/*
+coverage/*
