@@ -105,7 +105,11 @@
 .TeXEditor-buttons {
   text-align: center;
 }
-
+.TexEditor-container {
+  border: #7e7e7e 1px solid;
+  border-radius: 2px;
+  margin-bottom: 12px;
+}
 .TeXEditor-saveButton,
 .TeXEditor-removeButton {
   background-color: #fff;
